@@ -14,7 +14,7 @@ class ErrorHandler(commands.Cog):
             await ctx.reply("❌ You don’t have permission to use this command.")
         
         elif isinstance(error, commands.CommandNotFound):
-            return  # silently ignore
+            return  # silently ignore command not found
         
         else:
             # Log unexpected errors
