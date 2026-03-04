@@ -15,11 +15,7 @@ class SyncCommands(commands.Cog):
         self.bot.tree.copy_global_to(guild=ctx.guild)
         synced = await self.bot.tree.sync(guild=ctx.guild)
 
-        embed = discord.Embed(
-            title="Command Sync Status",
-            description=f"`✅ Guild synced` : {len(synced)}",
-            color=0x5865F2
-        )
+        embed = discord.Embed(title="Command Sync Status",description=f"`✅ Guild synced` : {len(synced)}",color=0x5865F2)
         await ctx.reply(embed=embed)
 
     @commands.command(name="syncglobal")
@@ -27,11 +23,7 @@ class SyncCommands(commands.Cog):
     async def sync_global(self, ctx: commands.Context):
         synced = await self.bot.tree.sync()
 
-        embed = discord.Embed(
-            title="Command Sync Status",
-            description=f"`🌍 Global synced` : {len(synced)}",
-            color=0x5865F2
-        )
+        embed = discord.Embed(title="Command Sync Status",description=f"`🌍 Global synced` : {len(synced)}",color=0x5865F2)
         await ctx.reply(embed=embed)
 
 
