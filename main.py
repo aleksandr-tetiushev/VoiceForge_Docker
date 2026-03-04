@@ -23,8 +23,8 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         await self.load_extension("cogs.voice_controls")
-        await self.load_extension("cogs.error_handeling")
-        await self.load_extension("cogs.voice_controls")
+        await self.load_extension("cogs.error_handling")
+        await self.load_extension("cogs.sync_command")
 
 bot = MyBot()
 
