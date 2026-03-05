@@ -1,13 +1,17 @@
+from __future__ import annotations
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import os
 import logging
 import asyncio
+from typing import Optional
 
 
 load_dotenv()
 TOKEN = os.getenv("VOICE_BOT_TOKEN")
+CATEGORY_ID = os.getenv("CUSTOM_VOICE_CATEGORY_ID")
+CREATE_CHANNEL_ID = os.getenv("CUSTOM_VOICE_CHANNEL_ID")
 
 if not TOKEN:
     raise ValueError("VOICE_BOT_TOKEN not found in environment variables.") # prevent silent error for token not found
@@ -20,13 +24,17 @@ voice_bot_log_handler = logging.FileHandler(filename=log_path,encoding="utf-8",m
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=discord.Intents.all())
+        self.category_id: int = int(CATEGORY_ID)
+        self.create_channel_id: int = int(CREATE_CHANNEL_ID)
 
     async def setup_hook(self):
+        await self.load_extension("cogs.voice_manager")
         await self.load_extension("cogs.voice_controls")
         await self.load_extension("cogs.error_handling")
         await self.load_extension("cogs.sync_command")
 
 bot = MyBot()
+
 
 
 
