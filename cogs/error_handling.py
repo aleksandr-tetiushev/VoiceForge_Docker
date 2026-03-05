@@ -18,6 +18,7 @@ class ErrorHandler(commands.Cog):
         
         else:
             # Log unexpected errors
+            ctx.reply("Some Error Occured!")
             raise error
         
 async def setup(bot: commands.Bot):
