@@ -1,4 +1,6 @@
 from discord.ext import commands
+from discord import app_commands
+import discord
 
 
 class ErrorHandler(commands.Cog):
@@ -18,7 +20,18 @@ class ErrorHandler(commands.Cog):
         
         else:
             # Log unexpected errors
-            ctx.reply("Some Error Occured!")
+            await ctx.reply("Some Error Occured!")
+            raise error
+    
+    @commands.Cog.listener()
+    async def on_app_command_error(self,interaction: discord.Interaction,error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message("❌ You don't have permission to use this command.",ephemeral=True)
+
+        elif isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message("⏳ Command is on cooldown.",ephemeral=True)    
+        else:
+            await interaction.response.send_message("⚠️ An unexpected error occurred.",ephemeral=True)
             raise error
         
 async def setup(bot: commands.Bot):
