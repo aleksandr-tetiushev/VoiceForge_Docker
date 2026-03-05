@@ -35,7 +35,8 @@ class VoiceManager(commands.Cog):
             guild: discord.Guild = member.guild
 
             category = guild.get_channel(self.category_id)
-            if not isinstance(category, discord.CategoryChannel):
+            
+            if category is None or not isinstance(category, discord.CategoryChannel):
                 return
                        
             member_owned_channel = self.owners_to_channel.get(member.id)
@@ -61,6 +62,7 @@ class VoiceManager(commands.Cog):
             self.channel_to_owners[new_channel.id] = member.id
             self.owners_to_channel[member.id] = new_channel.id
 
+            
             await member.move_to(new_channel)
 
         # Delete empty channels & remove ownership
@@ -73,6 +75,6 @@ class VoiceManager(commands.Cog):
 
                     await before.channel.delete()
 
-
+# setup function to load cog in main module 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VoiceManager(bot))
