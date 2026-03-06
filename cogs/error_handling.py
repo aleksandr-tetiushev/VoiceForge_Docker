@@ -23,25 +23,7 @@ class ErrorHandler(commands.Cog):
             await ctx.reply("Some Error Occured!")
             raise error
     
-    @commands.Cog.listener()
-    async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-
-        msg = "⚠️ An unexpected error occurred."
-    
-        if isinstance(error, app_commands.MissingPermissions):
-            msg = "❌ You don't have permission to use this command."
-        elif isinstance(error, app_commands.CommandOnCooldown):
-            retry_after = round(error.retry_after)
-            msg = f"⏳ Command on cooldown. Try again in **{retry_after} seconds**."
-
-        # send response safely
-        if interaction.response.is_done():
-            await interaction.followup.send(msg, ephemeral=True)
-        else:
-            await interaction.response.send_message(msg, ephemeral=True)
-    
-        if not isinstance(error, (app_commands.MissingPermissions, app_commands.CommandOnCooldown)):
-            raise error
+   
         
 async def setup(bot: commands.Bot):
     await bot.add_cog(ErrorHandler(bot))

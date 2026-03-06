@@ -6,7 +6,7 @@ import os
 import logging
 import asyncio
 from typing import Optional
-
+from discord import app_commands 
 
 load_dotenv()
 TOKEN = os.getenv("VOICE_BOT_TOKEN")
@@ -35,7 +35,22 @@ class MyBot(commands.Bot):
 
 bot = MyBot()
 
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
 
+    msg = "⚠️ An unexpected error occurred."
+
+    if isinstance(error, app_commands.MissingPermissions):
+        msg = "❌ You don't have permission to use this command."
+
+    elif isinstance(error, app_commands.CommandOnCooldown):
+        retry_after = round(error.retry_after)
+        msg = f"⏳ Command on cooldown. Try again in **{retry_after}s**."
+
+    if interaction.response.is_done():
+        await interaction.followup.send(msg, ephemeral=True)
+    else:
+        await interaction.response.send_message(msg, ephemeral=True)
 
 
 if __name__ == "__main__":
