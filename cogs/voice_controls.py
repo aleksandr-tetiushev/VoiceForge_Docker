@@ -4,7 +4,7 @@ from discord import app_commands
 from cogs.voice_manager import VoiceManager
 from typing import Optional
 from config import RENAME_COOLDOWN , CLAIM_COOLDOWN , LIMIT_CHANGE_COOLDOWN , KICK_MEMBER_COOLDOWN , MAX_RENAME_CHARACTER_LIMIT
-
+import asyncio
 
 # all voice control commands
 class VoiceControls(commands.Cog):
@@ -39,6 +39,9 @@ class VoiceControls(commands.Cog):
 
     def user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
         return bool(interaction.user.voice and interaction.user.voice.channel)
+    
+    def user_in_same_voice_channel(self,interaction:discord.Interaction,member:discord.Member) -> bool: # make sure the member is in same voice channel
+        return member.voice and member.voice.channel == interaction.user.voice.channel
         
     async def send(self,interaction:discord.Interaction, msg , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
         if interaction.response.is_done():
@@ -154,8 +157,47 @@ class VoiceControls(commands.Cog):
         await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
         return
         
+    @app_commands.command(name="kick",description="Kick user from voice channel (max 5 at a time)")
+    @app_commands.checks.cooldown(1,KICK_MEMBER_COOLDOWN)
+    async def kick(self,interaction:discord.Interaction,
+                   member1: discord.Member,
+                   member2: discord.Member|None=None,
+                   member3: discord.Member|None=None,
+                   member4: discord.Member|None=None,
+                   member5: discord.Member|None=None):
+        
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            return
+        
+        members = [member1,member2,member3,member4,member5]
 
+        voice_manager = self.get_voice_manager() # get VoiceManager cog
 
+        if not await self.verify_ownership(voice_manager,interaction):
+            return
+        members = set(members) # making sure there are no repeated users
+        for member in members:
+
+            if not member:
+                continue
+            
+            if member.id == interaction.user.id:
+                await self.send(interaction=interaction,msg="You cannot kick yourself from the voice channel.")
+                continue
+            
+            if not self.user_in_same_voice_channel(interaction, member):
+                await self.send(interaction=interaction,msg=f"{member.mention} is not in your voice channel.")
+                continue
+            
+            await member.move_to(None)
+            
+            await self.send(interaction=interaction,msg=f"{member.mention} kicked from voice channel.")
+
+            await asyncio.sleep(0.3)  # delay to avoid rate limit
+
+        return
+            
 
 
 
