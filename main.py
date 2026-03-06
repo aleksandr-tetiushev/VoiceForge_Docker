@@ -21,7 +21,7 @@ voice_bot_log_handler = logging.FileHandler(filename=log_path,encoding="utf-8",m
 # Bot config class
 class MyBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix="!", intents=discord.Intents.all())
+        super().__init__(command_prefix="!", intents=discord.Intents.all(),help_command=None)
         self.category_id: int = int(CATEGORY_ID)
         self.create_channel_id: int = int(CREATE_CHANNEL_ID)
 

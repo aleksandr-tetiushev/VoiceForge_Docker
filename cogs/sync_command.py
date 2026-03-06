@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 
 class SyncCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -42,6 +43,31 @@ class SyncCommands(commands.Cog):
         self.bot.tree.clear_commands(guild=None)
         await self.bot.tree.sync()
         await ctx.reply("⚠️ Cleared ALL global slash commands.")
+
+    @app_commands.command(name="help", description="Shows a list of all available commands.")
+    async def help(self, interaction: discord.Interaction):
+        embed = discord.Embed(title="Help Menu", color=discord.Color.blue())
+        # Iterate over all registered slash commands
+        for command in self.bot.tree.walk_commands():
+            # Add command name and description to the embed
+            embed.add_field(name=f"/{command.qualified_name}", value=command.description, inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # The custom prefix help command to list slash commands
+    @commands.command(name="help", description="Shows this help message for slash commands.")
+    async def help_command(self,ctx: commands.Context):
+        embed = discord.Embed(title="Slash Commands Help",description="List of all available slash commands:",color=discord.Color.blurple())
+    
+        # Iterate over all registered application commands using walk_commands()
+        for command in self.bot.tree.walk_commands():
+            
+            # Check if the command is a top-level command and not part of a group
+            if isinstance(command, app_commands.Command):
+                name = f"**/{command.name}**"
+                value = command.description if command.description else "No description provided."
+                embed.add_field(name=name, value=value, inline=False)
+        
+        await ctx.send(embed=embed)
 
 
 async def setup(bot:commands.Bot):

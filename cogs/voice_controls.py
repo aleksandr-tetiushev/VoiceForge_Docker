@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from cogs.voice_manager import VoiceManager
 from typing import Optional
-from config import RENAME_COOLDOWN , CLAIM_COOLDOWN , LIMIT_CHANGE_COOLDOWN
+from config import RENAME_COOLDOWN , CLAIM_COOLDOWN , LIMIT_CHANGE_COOLDOWN , KICK_MEMBER_COOLDOWN , MAX_RENAME_CHARACTER_LIMIT
 
 
 # all voice control commands
@@ -11,6 +11,32 @@ class VoiceControls(commands.Cog):
     def __init__(self, bot:commands.Bot):
         self.bot = bot
     
+    async def verify_ownership(self,voice_manager:VoiceManager,interaction:discord.Interaction)-> bool: # verifying ownership 
+        if not self.user_in_voice_channel_check(interaction): # main command handles the user in voice but still to prevent crashes we check user's voice status
+            return False
+
+        channel = interaction.user.voice.channel 
+        
+        if voice_manager is None:
+            await self.send(interaction=interaction,msg="Voice manager not available.")
+            return False
+        
+        if voice_manager.category_id != channel.category_id: # making sure command runs only in custom voice channels 
+            await self.send(interaction=interaction,msg="❌ This command works in custom voice channels only.")
+            return False
+        
+        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+
+        if owner_id is None: # making sure channel have a owner or else indicating user to register first 
+            await self.send(interaction=interaction,msg="❌ This channel has no registered owner. Use `/claim` to take ownership.")
+            return False
+        
+        if interaction.user.id != owner_id: # verify if user is voice owner 
+            await self.send(interaction=interaction,msg="❌ You are not Voice Channel Owner")
+            return False
+        
+        return True
+
     def user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
         return bool(interaction.user.voice and interaction.user.voice.channel)
         
@@ -36,7 +62,7 @@ class VoiceControls(commands.Cog):
             await self.send(interaction=interaction,msg="❌ Channel name cannot be empty.")
             return
         
-        if len(name) >32:
+        if len(name) > MAX_RENAME_CHARACTER_LIMIT:
             await self.send(interaction=interaction,msg="❌ Channel name cannot be longer than 32 characters.")
             return
 
@@ -44,22 +70,7 @@ class VoiceControls(commands.Cog):
         
         voice_manager = self.get_voice_manager() # get VoiceManager cog
 
-        if voice_manager is None:
-            await self.send(interaction=interaction,msg="Voice manager not available.")
-            return
-        
-        if voice_manager.category_id != channel.category_id: # making sure command runs only in custom voice channels 
-            await self.send(interaction=interaction,msg="❌ This command works in custom voice channels only.")
-            return
-        
-        owner_id =  voice_manager.channel_to_owners.get(channel.id)
-
-        if owner_id is None: # making sure channel have a owner or else indicating user to register first 
-            await self.send(interaction=interaction,msg="❌ This channel has no registered owner. Use `/claim` to take ownership.")
-            return 
-        
-        if interaction.user.id != owner_id: # verify if user is voice owner 
-            await self.send(interaction=interaction,msg="❌ You are not Voice Channel Owner")
+        if not await self.verify_ownership(voice_manager,interaction):
             return
         
         if channel.name == name:
@@ -122,27 +133,12 @@ class VoiceControls(commands.Cog):
         if not 0 <= limit <= 99: # making sure limit isnt more or less than limit by discord
             await self.send(interaction=interaction,msg="Invalid value limit should be between 1-99 or enter 0 to reset limit.")
             return
-
-        channel = interaction.user.voice.channel 
         
         voice_manager = self.get_voice_manager() # get VoiceManager cog
 
-        if voice_manager is None:
-            await self.send(interaction=interaction,msg="Voice manager not available.")
-            return
-        
-        if voice_manager.category_id != channel.category_id: # making sure command runs only in custom voice channels 
-            await self.send(interaction=interaction,msg="❌ This command works in custom voice channels only.")
-            return
-        
-        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+        channel = interaction.user.voice.channel 
 
-        if owner_id is None: # making sure channel have a owner or else indicating user to register first 
-            await self.send(interaction=interaction,msg="❌ This channel has no registered owner. Use `/claim` to take ownership.")
-            return 
-        
-        if interaction.user.id != owner_id: # verify if user is voice owner 
-            await self.send(interaction=interaction,msg="❌ You are not Voice Channel Owner")
+        if not await self.verify_ownership(voice_manager,interaction):
             return
         
         if channel.user_limit == limit: # avoiding unnecessary api calls 
@@ -158,7 +154,9 @@ class VoiceControls(commands.Cog):
         await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
         return
         
-        
+
+
+
 
 
 # Setup function to load the cog
