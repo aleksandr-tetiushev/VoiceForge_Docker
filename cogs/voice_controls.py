@@ -316,6 +316,31 @@ class VoiceControls(commands.Cog):
             except discord.Forbidden:
                 await self.send(interaction,f"❌ Could not DM {member.mention}. Their DMs are closed.")
 
+    @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
+    @app_commands.checks.cooldown(1, HIDE_COOLDOWN)
+    async def hide(self, interaction: discord.Interaction):
+
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction, msg="You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        everyone = interaction.guild.default_role
+
+        if not channel.permissions_for(everyone).view_channel:
+            await self.send(interaction, "Voice channel is already hidden.")
+            return
+
+        overwrite = channel.overwrites_for(everyone)
+        overwrite.view_channel = False
+
+        await channel.set_permissions(everyone, overwrite=overwrite)
+        await self.send(interaction, "🚫 Voice channel hidden.")
 
 
 # Setup function to load the cog
