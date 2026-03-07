@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from cogs.voice_manager import VoiceManager
 from typing import Optional
-from config import RENAME_COOLDOWN , CLAIM_COOLDOWN , LIMIT_CHANGE_COOLDOWN , KICK_MEMBER_COOLDOWN , MAX_RENAME_CHARACTER_LIMIT
+from config import * 
 import asyncio
 
 # all voice control commands
@@ -198,8 +198,31 @@ class VoiceControls(commands.Cog):
 
         return
             
+    @app_commands.command(name="lock",description="Lock current voice channel")
+    @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
+    async def lock(self,interaction:discord.Interaction):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            return
+        
+        voice_manager = self.get_voice_manager() # get VoiceManager cog
 
+        if not await self.verify_ownership(voice_manager,interaction):
+            return
 
+        channel = interaction.user.voice.channel 
+        everyone = interaction.guild.default_role
+        overwrite = channel.overwrites_for(everyone)
+
+        if overwrite.connect is False: # verifying if voice channel isnt locked already to avoid unnecessary api calls
+            await self.send(interaction, "Voice channel is already locked.")
+            return        
+        
+        overwrite.connect = False
+        await channel.set_permissions(everyone, overwrite=overwrite)
+        await self.send(interaction, "🔒 Voice channel locked.")
+        return
+    
 
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
