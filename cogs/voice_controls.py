@@ -223,7 +223,32 @@ class VoiceControls(commands.Cog):
         await self.send(interaction, "🔒 Voice channel locked.")
         return
     
+    @app_commands.command(name="unlock",description="Unlock current voice channel")
+    @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
+    async def unlock(self,interaction:discord.Interaction):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            return
+        
+        voice_manager = self.get_voice_manager() # get VoiceManager cog
 
+        if not await self.verify_ownership(voice_manager,interaction):
+            return
+
+        channel = interaction.user.voice.channel 
+        everyone = interaction.guild.default_role
+        overwrite = channel.overwrites_for(everyone)
+
+        if overwrite.connect is True: # verifying if voice channel isnt unlocked already to avoid unnecessary api calls
+            await self.send(interaction, "Voice channel is already unlocked.")
+            return        
+        
+        overwrite.connect = True
+        await channel.set_permissions(everyone, overwrite=overwrite)
+        await self.send(interaction, "🔓 Voice channel unlocked.")
+        return
+    
+    
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
     await bot.add_cog(VoiceControls(bot))
