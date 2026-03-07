@@ -273,7 +273,48 @@ class VoiceControls(commands.Cog):
         await channel.delete()
         return
     
+    @app_commands.command(name="invite",description="Send invite to user for your voice channel (max 5 invites at a time)")
+    @app_commands.checks.cooldown(1,INVITE_COOLDOWN)
+    async def invite(self, interaction: discord.Interaction,
+                   member1: discord.Member,
+                   member2: discord.Member|None=None,
+                   member3: discord.Member|None=None,
+                   member4: discord.Member|None=None,
+                   member5: discord.Member|None=None):
 
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "You are not in a voice channel.")
+            return
+        
+        members = [member1,member2,member3,member4,member5]
+        channel = interaction.user.voice.channel
+
+        voice_manager = self.get_voice_manager() # get VoiceManager cog
+
+        if not await self.verify_ownership(voice_manager,interaction):
+            return
+        
+        guild = interaction.guild
+        invite_link = f"https://discord.com/channels/{guild.id}/{channel.id}"
+        members = set(members) # making sure there are no repeated users
+        
+        for member in members:
+            if not member:
+                continue
+            try: 
+                if member.id == interaction.user.id:
+                    await self.send(interaction=interaction,msg="You cannot invite yourself to the voice channel.")
+                    continue
+                 
+                if self.user_in_same_voice_channel(interaction, member):
+                    await self.send(interaction=interaction,msg=f"{member.mention} is already in your voice channel.")
+                    continue
+      
+                await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}")
+                await self.send(interaction, f"📩 Invite sent to {member.mention}")
+            
+            except discord.Forbidden:
+                await self.send(interaction,f"❌ Could not DM {member.mention}. Their DMs are closed.")
 
 
 
