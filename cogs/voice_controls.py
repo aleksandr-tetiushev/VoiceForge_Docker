@@ -342,6 +342,32 @@ class VoiceControls(commands.Cog):
         await channel.set_permissions(everyone, overwrite=overwrite)
         await self.send(interaction, "🚫 Voice channel hidden.")
 
+    @app_commands.command(name="unhide",description="Make the current voice channel visible to everyone.")
+    @app_commands.checks.cooldown(1, HIDE_COOLDOWN)
+    async def unhide(self, interaction: discord.Interaction):
+
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction, msg="You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        everyone = interaction.guild.default_role
+
+        if channel.permissions_for(everyone).view_channel:
+            await self.send(interaction, "Voice channel is already visible.")
+            return
+
+        overwrite = channel.overwrites_for(everyone)
+        overwrite.view_channel = None # restore default visibility according to server settings
+
+        await channel.set_permissions(everyone, overwrite=overwrite)
+        await self.send(interaction, "👁️ Voice channel is now visible.")
+        return
 
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
