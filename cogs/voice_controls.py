@@ -43,7 +43,7 @@ class VoiceControls(commands.Cog):
     def user_in_same_voice_channel(self,interaction:discord.Interaction,member:discord.Member) -> bool: # make sure the member is in same voice channel
         return member.voice and member.voice.channel == interaction.user.voice.channel
         
-    async def send(self,interaction:discord.Interaction, msg , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
+    async def send(self,interaction:discord.Interaction, msg:str , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
         if interaction.response.is_done():
             await interaction.followup.send(msg, ephemeral=ephemeral)
         else:
@@ -248,7 +248,35 @@ class VoiceControls(commands.Cog):
         await self.send(interaction, "🔓 Voice channel unlocked.")
         return
     
+    @app_commands.command(name="delete",description="Delete current voice channel")
+    @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
+    async def delete(self,interaction:discord.Interaction):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            return
+        
+        channel = interaction.user.voice.channel 
+        
+        voice_manager = self.get_voice_manager() # get VoiceManager cog
+
+        if not await self.verify_ownership(voice_manager,interaction):
+            return
+        
+        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+
+        if not owner_id:
+            return
+        
+        voice_manager.owners_to_channel.pop(owner_id,None)
+        voice_manager.channel_to_owners.pop(interaction.user.voice.channel.id,None)
+        await self.send(interaction=interaction,msg="Voice channel deleted.")
+        await channel.delete()
+        return
     
+
+
+
+
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
     await bot.add_cog(VoiceControls(bot))

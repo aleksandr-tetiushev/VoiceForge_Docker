@@ -6,6 +6,7 @@ import os
 import logging
 from discord import app_commands 
 
+
 load_dotenv()
 TOKEN = os.getenv("VOICE_BOT_TOKEN")
 CATEGORY_ID = os.getenv("CUSTOM_VOICE_CATEGORY_ID")
