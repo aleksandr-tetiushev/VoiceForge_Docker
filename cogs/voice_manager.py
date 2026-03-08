@@ -1,6 +1,8 @@
 from __future__ import annotations
 import discord
 from discord.ext import commands
+from typing import Optional
+import asyncio
 
 class VoiceManager(commands.Cog):
     def __init__(self,bot:commands.Bot) -> None:
@@ -14,6 +16,7 @@ class VoiceManager(commands.Cog):
         # convert env IDs to int once
         self.category_id:int = int(bot.category_id)
         self.create_channel_id:int = int(bot.create_channel_id)
+        
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None: # update data incase of manual delete from server Mods or other bots

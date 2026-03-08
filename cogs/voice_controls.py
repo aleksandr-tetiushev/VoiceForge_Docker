@@ -293,7 +293,8 @@ class VoiceControls(commands.Cog):
             await self.send(interaction, "You are not in a voice channel.")
             return
         
-        members = [member1,member2,member3,member4,member5]
+        members = {member1,member2,member3,member4,member5}
+        members.discard(None)
         channel = interaction.user.voice.channel
 
         voice_manager = self.get_voice_manager() # get VoiceManager cog
@@ -303,15 +304,16 @@ class VoiceControls(commands.Cog):
         
         guild = interaction.guild
         invite_link = f"https://discord.com/channels/{guild.id}/{channel.id}"
-        members = set(members) # making sure there are no repeated users
 
         invite_sent = []
         
         for member in members:
             if not member:
                 continue
+
             if member.bot:
                 continue
+
             try: 
                 if member.id == interaction.user.id:
                     continue
@@ -320,29 +322,28 @@ class VoiceControls(commands.Cog):
 
                     continue
       
-                await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}")
-                await self.send(interaction, f"📩 Invite sent to {member.mention}")
+                await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}") 
                 invite_sent.append(member.mention)
             
             except discord.Forbidden:
                 pass
 
-            embed = discord.Embed(color=discord.Color.blurple())
+        embed = discord.Embed(color=discord.Color.blurple())
 
-            value = "\n".join(invite_sent) if invite_sent else "No users were invited."
-            
-            embed.add_field(
-                name="✅ Invited:",
-                value=value,
-                inline=False
-            )
-            
-            embed.set_footer(
-                text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
-            )
+        value = "\n".join(invite_sent) if invite_sent else " No users were invited."
+        
+        embed.add_field(
+            name="✅ Invited:",
+            value=value,
+            inline=False
+        )
+        
+        embed.set_footer(
+            text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
+        )
 
-            await self.send_embed(interaction=interaction, embed=embed)
-            return
+        await self.send_embed(interaction=interaction, embed=embed)
+        return
 
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
@@ -397,7 +398,7 @@ class VoiceControls(commands.Cog):
         await self.send(interaction, "👁️ Voice channel is now visible.")
         return
     
-    @app_commands.command(name="trust",description="Let selected users view and connect even if channel is locked or hidden (Max 5).")
+    @app_commands.command(name="trust",description="Let selected users view and connect even if channel is locked or hidden (Max 5 at a time).")
     @app_commands.checks.cooldown(1, TRUST_UNTRUST_COOLDOWN)
     async def trust(self,interaction: discord.Interaction,
         member1: discord.Member,
@@ -441,7 +442,7 @@ class VoiceControls(commands.Cog):
             overwrites[member] = overwrite
             trusted.append(member.mention)
         
-        view = "\n".join(member for member in trusted) if trusted else "⚠️ No valid user provided to trust."
+        view = "\n".join(trusted) if trusted else " No valid user provided to trust."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -484,9 +485,11 @@ class VoiceControls(commands.Cog):
                     trusted_members.append(member)
 
         if not trusted_members:
-            await self.send(interaction,"❌ No trusted users found.")
+            await self.send(interaction,"")
             return
         
+        value = "\n".join(member.mention for member in trusted_members) if trusted_members else " No trusted users found."
+
         embed = discord.Embed(
             title="Trusted Users",
             description="These are currently Trusted Users.",
@@ -495,14 +498,14 @@ class VoiceControls(commands.Cog):
 
         embed.add_field(
             name="Currently Trusted :",
-            value="\n".join(member.mention for member in trusted_members),
+            value=value,
             inline=False
         )
 
         await self.send_embed(interaction=interaction,embed=embed)
         return
     
-    @app_commands.command(name="untrust",description="Remove selected user from trusted user's list.")
+    @app_commands.command(name="untrust",description="Remove selected user from trusted user's list (Max 5 at a time).")
     @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
     async def untrust(self,interaction:discord.Interaction,
             member1: discord.Member,
@@ -546,7 +549,7 @@ class VoiceControls(commands.Cog):
             overwrites[member] = overwrite
             untrusted.append(member.mention)
 
-        view = "\n".join(member for member in untrusted) if untrusted else "⚠️ No valid user provided to untrust."
+        view = "\n".join(untrusted) if untrusted else " No valid user provided to untrust."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -563,7 +566,71 @@ class VoiceControls(commands.Cog):
         await self.send_embed(interaction=interaction,embed=embed)
         return
     
-    
+    @app_commands.command(name="block",description="Kick and Block selected users from voice channel (Max 5 at a time).")
+    @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
+    async def block(self,interaction:discord.Interaction,
+                    member1: discord.Member,
+                    member2: discord.Member | None = None,
+                    member3: discord.Member | None = None,
+                    member4: discord.Member | None = None,
+                    member5: discord.Member | None = None
+                    ):
+        
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        overwrites = channel.overwrites
+
+        members:set = {member1, member2, member3, member4, member5}
+        members.discard(None)
+        blocked = []
+
+        for member in members:
+
+            if member.bot:
+                continue
+
+            if member.id == interaction.user.id:
+                continue
+
+            overwrite = overwrites.get(member, discord.PermissionOverwrite())
+            if overwrite.connect is False and overwrite.view_channel is False: # preventing unnecessary overwrites but setting it to false if any one of 2 required permissions is not False
+                 continue
+            
+            overwrite.view_channel = False # will not show channel to blocked user
+            overwrite.connect = False # will not let blocked user to connect
+            overwrites[member] = overwrite
+
+            if member in channel.members: # kicking user from voice channel 
+                await member.move_to(None) 
+            
+            blocked.append(member.mention)
+
+        view = "\n".join(blocked) if blocked else " No valid user provided to block."
+        
+        await channel.edit(overwrites=overwrites)
+        embed = discord.Embed(
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="✅ Blocked :",
+            value=view,
+            inline=False
+        )
+        
+        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Block/Unblock them in this channel.")
+        await self.send_embed(interaction=interaction,embed=embed)
+        return
+
+
     
 # Setup function to load the cog
 async def setup(bot:commands.Bot):

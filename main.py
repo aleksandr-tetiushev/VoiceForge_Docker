@@ -12,9 +12,13 @@ load_dotenv()
 TOKEN = os.getenv("VOICE_BOT_TOKEN")
 CATEGORY_ID = os.getenv("CUSTOM_VOICE_CATEGORY_ID")
 CREATE_CHANNEL_ID = os.getenv("CUSTOM_VOICE_CHANNEL_ID")
+SERVER_ID = os.getenv("SERVER_ID")
 
 if not TOKEN:
     raise ValueError("VOICE_BOT_TOKEN not found in environment variables.") # prevent silent error for token not found
+
+if not CATEGORY_ID or not CREATE_CHANNEL_ID or not SERVER_ID:
+    raise ValueError("Credentials Missing in environment variables.") # prevent None entries 
 
 os.makedirs("Logs", exist_ok=True)
 log_path = os.path.join("Logs","VOICE_BOT.log")
@@ -26,6 +30,7 @@ class MyBot(commands.Bot):
         super().__init__(command_prefix="!", intents=discord.Intents.all(),help_command=None)
         self.category_id: int = int(CATEGORY_ID)
         self.create_channel_id: int = int(CREATE_CHANNEL_ID)
+        self.server_id: int = int(SERVER_ID)
 
     async def setup_hook(self):
         await self.load_extension("cogs.voice_manager")
