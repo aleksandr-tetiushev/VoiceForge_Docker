@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import logging
 from discord import app_commands 
+from logger import log_error
 
 
 load_dotenv()
@@ -35,9 +36,9 @@ class MyBot(commands.Bot):
 bot = MyBot()
 
 @bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError): # handling error for slash commands 
 
-    msg = "⚠️ An unexpected error occurred."
+    error_log = False
 
     if isinstance(error, app_commands.MissingPermissions):
         msg = "❌ You don't have permission to use this command."
@@ -45,11 +46,20 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     elif isinstance(error, app_commands.CommandOnCooldown):
         retry_after = round(error.retry_after)
         msg = f"⏳ Command on cooldown. Try again in **{retry_after}s**."
+    else:
+        msg = "⚠️ An unexpected error occurred."
+        error_log = True
 
     if interaction.response.is_done():
         await interaction.followup.send(msg, ephemeral=True)
     else:
         await interaction.response.send_message(msg, ephemeral=True)
+    
+    if error_log:
+        log_error(message="Unexpected Error - Location : on_app_command_error",exc_info=error)
+    
+    
+
 
 
 if __name__ == "__main__":

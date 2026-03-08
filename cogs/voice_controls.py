@@ -48,6 +48,12 @@ class VoiceControls(commands.Cog):
             await interaction.followup.send(msg, ephemeral=ephemeral)
         else:
             await interaction.response.send_message(msg, ephemeral=ephemeral)
+
+    async def send_embed(self,interaction:discord.Interaction, embed:discord.Embed , ephemeral:bool = True)-> None: # sends embed or send followup if response is already sent
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+        else:
+            await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
  
     def get_voice_manager(self) -> Optional[VoiceManager]: # get VoiceManager cog
         return self.bot.get_cog("VoiceManager")
@@ -298,24 +304,45 @@ class VoiceControls(commands.Cog):
         guild = interaction.guild
         invite_link = f"https://discord.com/channels/{guild.id}/{channel.id}"
         members = set(members) # making sure there are no repeated users
+
+        invite_sent = []
         
         for member in members:
             if not member:
                 continue
+            if member.bot:
+                continue
             try: 
                 if member.id == interaction.user.id:
-                    await self.send(interaction=interaction,msg="You cannot invite yourself to the voice channel.")
                     continue
                  
                 if self.user_in_same_voice_channel(interaction, member):
-                    await self.send(interaction=interaction,msg=f"{member.mention} is already in your voice channel.")
+
                     continue
       
                 await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}")
                 await self.send(interaction, f"📩 Invite sent to {member.mention}")
+                invite_sent.append(member.mention)
             
             except discord.Forbidden:
-                await self.send(interaction,f"❌ Could not DM {member.mention}. Their DMs are closed.")
+                pass
+
+            embed = discord.Embed(color=discord.Color.blurple())
+
+            value = "\n".join(invite_sent) if invite_sent else "No users were invited."
+            
+            embed.add_field(
+                name="✅ Invited:",
+                value=value,
+                inline=False
+            )
+            
+            embed.set_footer(
+                text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
+            )
+
+            await self.send_embed(interaction=interaction, embed=embed)
+            return
 
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
@@ -419,7 +446,17 @@ class VoiceControls(commands.Cog):
             return
         
         await channel.edit(overwrites=overwrites)
-        await self.send(interaction,f"✅ Trusted: {', '.join(trusted)}")
+        embed = discord.Embed(
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="✅ Trusted :",
+            value="\n".join(member for member in trusted),
+            inline=False
+        )
+        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
+        await self.send_embed(interaction=interaction,embed=embed)
         return
     
     @app_commands.command(name="trusted",description="Shows Trusted users for current voice channel.")
@@ -454,19 +491,21 @@ class VoiceControls(commands.Cog):
         
         embed = discord.Embed(
             title="Trusted Users",
-            description="Select users from the dropdown to remove trusted access.",
+            description="These are currently Trusted Users.",
             color=discord.Color.blurple()
             )
 
         embed.add_field(
-            name="Currently Trusted",
+            name="Currently Trusted :",
             value="\n".join(member.mention for member in trusted_members),
             inline=False
         )
 
-        await interaction.response.send_message(embed=embed,ephemeral=True)
+        await self.send_embed(interaction=interaction,embed=embed)
         return
-
+    
+    
+    
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
     await bot.add_cog(VoiceControls(bot))
