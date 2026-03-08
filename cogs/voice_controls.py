@@ -317,7 +317,7 @@ class VoiceControls(commands.Cog):
                 await self.send(interaction,f"❌ Could not DM {member.mention}. Their DMs are closed.")
 
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
-    @app_commands.checks.cooldown(1, HIDE_COOLDOWN)
+    @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def hide(self, interaction: discord.Interaction):
 
         if not self.user_in_voice_channel_check(interaction):
@@ -343,7 +343,7 @@ class VoiceControls(commands.Cog):
         await self.send(interaction, "🚫 Voice channel hidden.")
 
     @app_commands.command(name="unhide",description="Make the current voice channel visible to everyone.")
-    @app_commands.checks.cooldown(1, HIDE_COOLDOWN)
+    @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def unhide(self, interaction: discord.Interaction):
 
         if not self.user_in_voice_channel_check(interaction):
@@ -367,6 +367,60 @@ class VoiceControls(commands.Cog):
 
         await channel.set_permissions(everyone, overwrite=overwrite)
         await self.send(interaction, "👁️ Voice channel is now visible.")
+        return
+    
+    @app_commands.command(name="trust",description="Let selected users view and connect even if channel is locked or hidden (Max 5).")
+    @app_commands.checks.cooldown(1, TRUST_UNTRUST_COOLDOWN)
+    async def trust(self,interaction: discord.Interaction,
+        member1: discord.Member,
+        member2: discord.Member | None = None,
+        member3: discord.Member | None = None,
+        member4: discord.Member | None = None,
+        member5: discord.Member | None = None
+        ):
+
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        overwrites = channel.overwrites
+
+        members = {member1, member2, member3, member4, member5}
+        members.discard(None)
+        trusted = []
+
+        for member in members:
+
+            if member.bot:
+                continue
+
+            if member.id == interaction.user.id:
+                continue
+
+            
+
+            overwrite = overwrites.get(member, discord.PermissionOverwrite())
+            if overwrite.connect is True and overwrite.view_channel is True: # preventing unnecessary overwrites
+                 continue
+
+            overwrite.view_channel = True
+            overwrite.connect = True
+
+            overwrites[member] = overwrite
+            trusted.append(member.mention)
+
+        if not trusted: # preventing unnecessary api calls if there are no valid members to trust
+            await self.send(interaction,"⚠️ No valid members were provided to trust.")
+            return
+        
+        await channel.edit(overwrites=overwrites)
+        await self.send(interaction,f"✅ Trusted: {', '.join(trusted)}")
         return
 
 # Setup function to load the cog
