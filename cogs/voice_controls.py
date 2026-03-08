@@ -122,7 +122,8 @@ class VoiceControls(commands.Cog):
         voice_manager.channel_to_owners[channel.id] = interaction.user.id
         voice_manager.owners_to_channel[interaction.user.id] = channel.id
         
-        await channel.edit(name=f"{interaction.user.display_name}'s VC")
+        if not str(channel.name) == f"{interaction.user.display_name}'s VC":
+            await channel.edit(name=f"{interaction.user.display_name}'s VC")
         await self.send(interaction=interaction,msg="✅ You are owner of voice channel.")
         return
     
@@ -402,9 +403,7 @@ class VoiceControls(commands.Cog):
 
             if member.id == interaction.user.id:
                 continue
-
             
-
             overwrite = overwrites.get(member, discord.PermissionOverwrite())
             if overwrite.connect is True and overwrite.view_channel is True: # preventing unnecessary overwrites
                  continue
@@ -421,6 +420,51 @@ class VoiceControls(commands.Cog):
         
         await channel.edit(overwrites=overwrites)
         await self.send(interaction,f"✅ Trusted: {', '.join(trusted)}")
+        return
+    
+    @app_commands.command(name="trusted",description="Shows Trusted users for current voice channel.")
+    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    async def trusted(self,interaction:discord.Interaction):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        trusted_members = []
+
+        for member , overwrite in channel.overwrites.items():
+            if isinstance(member,discord.Member):
+                if member.id == interaction.user.id: # its not possible for owner of voice channel to be added as trusted but still checking it doesnt add owner in trusted member list
+                    continue
+                
+                if member.bot:
+                    continue
+                
+                if overwrite.view_channel is True and overwrite.connect is True:
+                    trusted_members.append(member)
+
+        if not trusted_members:
+            await self.send(interaction,"❌ No trusted users found.")
+            return
+        
+        embed = discord.Embed(
+            title="Trusted Users",
+            description="Select users from the dropdown to remove trusted access.",
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="Currently Trusted",
+            value="\n".join(member.mention for member in trusted_members),
+            inline=False
+        )
+
+        await interaction.response.send_message(embed=embed,ephemeral=True)
         return
 
 # Setup function to load the cog
