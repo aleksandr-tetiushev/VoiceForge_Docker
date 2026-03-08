@@ -440,10 +440,8 @@ class VoiceControls(commands.Cog):
 
             overwrites[member] = overwrite
             trusted.append(member.mention)
-
-        if not trusted: # preventing unnecessary api calls if there are no valid members to trust
-            await self.send(interaction,"⚠️ No valid members were provided to trust.")
-            return
+        
+        view = "\n".join(member for member in trusted) if trusted else "⚠️ No valid user provided to trust."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -452,7 +450,7 @@ class VoiceControls(commands.Cog):
 
         embed.add_field(
             name="✅ Trusted :",
-            value="\n".join(member for member in trusted),
+            value=view,
             inline=False
         )
         embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
@@ -501,6 +499,67 @@ class VoiceControls(commands.Cog):
             inline=False
         )
 
+        await self.send_embed(interaction=interaction,embed=embed)
+        return
+    
+    @app_commands.command(name="untrust",description="Remove selected user from trusted user's list.")
+    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    async def untrust(self,interaction:discord.Interaction,
+            member1: discord.Member,
+            member2: discord.Member | None = None,
+            member3: discord.Member | None = None,
+            member4: discord.Member | None = None,
+            member5: discord.Member | None = None
+            ):
+        
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "You are not in a voice channel.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        overwrites = channel.overwrites
+
+        members = {member1, member2, member3, member4, member5}
+        members.discard(None)
+        untrusted = []
+
+        for member in members:
+
+            if member.bot:
+                continue
+
+            if member.id == interaction.user.id:
+                continue
+            
+            overwrite = overwrites.get(member, discord.PermissionOverwrite())
+            if overwrite.connect is not True and overwrite.view_channel is not True: # preventing unnecessary overwrites but reseting if any one of 2 required permissions are True
+                 continue
+
+            overwrite.view_channel = None # None for reseting to default settings
+            overwrite.connect = None # None for reseting to default settings
+
+            overwrites[member] = overwrite
+            untrusted.append(member.mention)
+
+        view = "\n".join(member for member in untrusted) if untrusted else "⚠️ No valid user provided to untrust."
+        
+        await channel.edit(overwrites=overwrites)
+        embed = discord.Embed(
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="✅ Untrusted :",
+            value="\n".join(member for member in untrusted),
+            inline=False
+        )
+        
+        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
         await self.send_embed(interaction=interaction,embed=embed)
         return
     
