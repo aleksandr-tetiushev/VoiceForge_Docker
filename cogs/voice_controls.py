@@ -688,7 +688,67 @@ class VoiceControls(commands.Cog):
         await self.send_embed(interaction=interaction,embed=embed)
         return
     
-    
+    @app_commands.command(name="unblock",description="Remove selected users from the blocked users list (Max 5 at a time).")
+    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    async def unblock(self,interaction:discord.Interaction,
+            member1: discord.Member,
+            member2: discord.Member | None = None,
+            member3: discord.Member | None = None,
+            member4: discord.Member | None = None,
+            member5: discord.Member | None = None
+            ):
+        
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
+            return
+
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        overwrites = channel.overwrites
+
+        members = {member1, member2, member3, member4, member5}
+        members.discard(None)
+        unblocked = []
+
+        for member in members:
+
+            if member.bot:
+                continue
+
+            if member.id == interaction.user.id:
+                continue
+            
+            overwrite = overwrites.get(member, discord.PermissionOverwrite())
+            if overwrite.connect is not False and overwrite.view_channel is not False: # preventing unnecessary overwrites but reseting if any one of 2 required permissions are False
+                 continue
+
+            # Reset permissions to inherit from role defaults
+            overwrite.view_channel = None
+            overwrite.connect = None
+
+            overwrites[member] = overwrite
+            unblocked.append(member.mention)
+
+        view = "\n".join(unblocked) if unblocked else "No valid users were provided to unblock."
+        
+        await channel.edit(overwrites=overwrites)
+        embed = discord.Embed(
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="✅ Unblocked Users:",
+            value=view,
+            inline=False
+        )
+        
+        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
+        await self.send_embed(interaction=interaction,embed=embed)
+        return
     
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
