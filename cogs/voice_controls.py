@@ -555,7 +555,7 @@ class VoiceControls(commands.Cog):
 
         embed.add_field(
             name="✅ Untrusted :",
-            value="\n".join(member for member in untrusted),
+            value=view,
             inline=False
         )
         
