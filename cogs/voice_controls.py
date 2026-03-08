@@ -91,7 +91,7 @@ class VoiceControls(commands.Cog):
         return
     
     @app_commands.command(name="claim", description="claim current voice channel")
-    @app_commands.checks.cooldown(1, CLAIM_COOLDOWN)
+    @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
@@ -476,8 +476,8 @@ class VoiceControls(commands.Cog):
         await self.send_embed(interaction=interaction,embed=embed)
         return
     
-    @app_commands.command(name="trusted",description="Shows Trusted users for current voice channel.")
-    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    @app_commands.command(name="trusted",description="Shows trusted users.")
+    @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def trusted(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -520,7 +520,7 @@ class VoiceControls(commands.Cog):
         return
     
     @app_commands.command(name="untrust",description="Remove selected user from trusted user's list (Max 5 at a time).")
-    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    @app_commands.checks.cooldown(1,TRUST_UNTRUST_COOLDOWN)
     async def untrust(self,interaction:discord.Interaction,
             member1: discord.Member,
             member2: discord.Member | None = None,
@@ -645,8 +645,8 @@ class VoiceControls(commands.Cog):
         await self.send_embed(interaction=interaction,embed=embed)
         return
 
-    @app_commands.command(name="blocked",description="Shows Blocked users for current voice channel.")
-    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    @app_commands.command(name="blocked",description="Shows blocked users.")
+    @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def blocked(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -689,7 +689,7 @@ class VoiceControls(commands.Cog):
         return
     
     @app_commands.command(name="unblock",description="Remove selected users from the blocked users list (Max 5 at a time).")
-    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
     async def unblock(self,interaction:discord.Interaction,
             member1: discord.Member,
             member2: discord.Member | None = None,
@@ -748,6 +748,50 @@ class VoiceControls(commands.Cog):
         
         embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
         await self.send_embed(interaction=interaction,embed=embed)
+        return
+    
+    @app_commands.command(name="transfer",description="Transfer your voice channel to another member in the channel.")
+    @app_commands.checks.cooldown(1,CLAIM_TRANSFER_COOLDOWN)
+    async def transfer(self,interaction:discord.Interaction,new_owner:discord.Member):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
+            return
+
+        voice_manager = self.get_voice_manager()
+        channel = interaction.user.voice.channel 
+        
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+        
+
+
+        if new_owner.bot:
+            await self.send(interaction,msg="❌ Invalid User.")
+            return
+        
+        if interaction.user.id == new_owner.id:
+            await self.send(interaction=interaction,msg="❌ You cannot transfer the voice channel to yourself.")
+            return
+
+        if new_owner not in channel.members: # checking if new_owner is in channel or not
+            await self.send(interaction=interaction,msg="❌ Selected user is not in the voice channel.")
+            return
+        
+        owner_id =  voice_manager.channel_to_owners.get(channel.id) # fetching owner id from ownership data
+
+        if owner_id:
+             # removing ownership data for current owner
+            voice_manager.channel_to_owners.pop(channel.id,None)
+            voice_manager.owners_to_channel.pop(owner_id, None)
+        
+        # adding ownership data for new owner
+        voice_manager.channel_to_owners[channel.id] = new_owner.id
+        voice_manager.owners_to_channel[new_owner.id] = channel.id
+        
+        if not str(channel.name) == f"{new_owner.display_name}'s VC": # renaming voice channel 
+            await channel.edit(name=f"{new_owner.display_name}'s VC")
+
+        await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
         return
     
 # Setup function to load the cog

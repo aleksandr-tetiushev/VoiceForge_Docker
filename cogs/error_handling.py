@@ -21,7 +21,7 @@ class ErrorHandler(commands.Cog):
         
         else:
             # Log unexpected errors
-            await ctx.reply("Some Error Occured!")
+            await ctx.reply("Some Error Occurred!")
             log_error(message="Unexpected Error - Location : on_command_error",exc_info=error)
     
    

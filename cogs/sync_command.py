@@ -31,7 +31,7 @@ class SyncCommands(commands.Cog):
     @commands.is_owner()
     async def clearguild(self,ctx:commands.Context):
         if ctx.guild is None:
-            await ctx.reply(f"Mamu ye command sirf servers me kaam krti ha.",mention_author=True)
+            await ctx.reply(f"This command only works in servers.",mention_author=True)
             return
         self.bot.tree.clear_commands(guild=ctx.guild)
         await self.bot.tree.sync(guild=ctx.guild)

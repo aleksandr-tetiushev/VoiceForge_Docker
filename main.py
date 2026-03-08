@@ -15,16 +15,16 @@ CREATE_CHANNEL_ID = os.getenv("CUSTOM_VOICE_CHANNEL_ID")
 SERVER_ID = os.getenv("SERVER_ID")
 
 if not TOKEN:
-    raise ValueError("VOICE_BOT_TOKEN not found in environment variables.") # prevent silent error for token not found
+    raise ValueError("VOICE_BOT_TOKEN not found in environment variables.") # Prevent silent failure if token is not found
 
 if not CATEGORY_ID or not CREATE_CHANNEL_ID or not SERVER_ID:
-    raise ValueError("Credentials Missing in environment variables.") # prevent None entries 
+    raise ValueError("Credentials Missing in environment variables.") # Prevent None entries
 
 os.makedirs("Logs", exist_ok=True)
 log_path = os.path.join("Logs","VOICE_BOT.log")
 voice_bot_log_handler = logging.FileHandler(filename=log_path,encoding="utf-8",mode='w')
 
-# Bot config class
+# Bot configuration class
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=discord.Intents.all(),help_command=None)
@@ -41,7 +41,7 @@ class MyBot(commands.Bot):
 bot = MyBot()
 
 @bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError): # handling error for slash commands 
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError): # Handle errors occurring in slash commands
 
     error_log = False
 
@@ -60,7 +60,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     else:
         await interaction.response.send_message(msg, ephemeral=True)
     
-    if error_log:
+    if error_log:  # Log unexpected errors for debugging
         log_error(message="Unexpected Error - Location : on_app_command_error",exc_info=error)
     
     

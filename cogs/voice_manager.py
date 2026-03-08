@@ -19,7 +19,7 @@ class VoiceManager(commands.Cog):
         
 
     @commands.Cog.listener()
-    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None: # update data incase of manual delete from server Mods or other bots
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None: # Update data in case of manual deletion by server mods or other bots
         if isinstance(channel, discord.VoiceChannel):
             owner_id = self.channel_to_owners.pop(channel.id, None)
             if owner_id:
@@ -27,13 +27,13 @@ class VoiceManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self,member: discord.Member,before: discord.VoiceState,after: discord.VoiceState) -> None:
-        if member.bot: # Ignore If Bot Moves
+        if member.bot: # Ignore if a bot moves
           return
         
-        if before.channel == after.channel: # prevent processing if channel did'nt actually changed 
+        if before.channel == after.channel: # Prevent processing if the channel didn't actually change 
             return
         
-        # check if joined channel is create vc channel
+        # Check if the joined channel is the create VC channel
         if after.channel and after.channel.id == self.create_channel_id:
             guild: discord.Guild = member.guild
 
@@ -44,12 +44,12 @@ class VoiceManager(commands.Cog):
                        
             member_owned_channel = self.owners_to_channel.get(member.id)
             
-            if member_owned_channel is not None: # moving user into existsing owned channel rather than creating new
+            if member_owned_channel is not None: # Move user into their existing owned channel rather than creating a new one
                 existing_channel = guild.get_channel(member_owned_channel)
                 if isinstance(existing_channel,discord.VoiceChannel):
                     return await member.move_to(existing_channel) 
                 else:
-                    # stale data cleanup
+                    # Clean up stale data
                     self.owners_to_channel.pop(member.id, None)
                     self.channel_to_owners.pop(member_owned_channel, None)
              
@@ -68,7 +68,7 @@ class VoiceManager(commands.Cog):
             
             await member.move_to(new_channel)
 
-        # Delete empty channels & remove ownership
+        # Delete empty channels and remove ownership
         if before.channel:
             if before.channel.id in self.channel_to_owners:
                 if len(before.channel.members) == 0:
@@ -78,6 +78,6 @@ class VoiceManager(commands.Cog):
 
                     await before.channel.delete()
 
-# setup function to load cog in main module 
+# Setup function to load cog into the main module 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VoiceManager(bot))

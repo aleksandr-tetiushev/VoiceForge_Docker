@@ -6,7 +6,7 @@ os.makedirs(folder, exist_ok=True)
 
 error_logger = logging.getLogger("error_logger")
 
-# 🔑 Prevent duplicate handlers on multiple imports
+# Prevent duplicate handlers on multiple imports
 if not error_logger.handlers:
     error_handler = logging.FileHandler(os.path.join(folder, "error.log"))
     error_handler.setFormatter(
