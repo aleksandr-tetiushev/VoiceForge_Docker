@@ -32,7 +32,7 @@ class VoiceControls(commands.Cog):
             return False
         
         if interaction.user.id != owner_id: # verify if user is voice owner 
-            await self.send(interaction=interaction,msg="❌ You are not Voice Channel Owner")
+            await self.send(interaction=interaction,msg="❌ You are not the owner of this voice channel.")
             return False
         
         return True
@@ -63,7 +63,7 @@ class VoiceControls(commands.Cog):
     @app_commands.checks.cooldown(1, RENAME_COOLDOWN)
     async def rename(self, interaction: discord.Interaction, name: str):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         name = name.strip()
 
@@ -72,7 +72,7 @@ class VoiceControls(commands.Cog):
             return
         
         if len(name) > MAX_RENAME_CHARACTER_LIMIT:
-            await self.send(interaction=interaction,msg="❌ Channel name cannot be longer than 32 characters.")
+            await self.send(interaction=interaction,msg="❌ Channel names cannot exceed 32 characters.")
             return
 
         channel = interaction.user.voice.channel 
@@ -83,18 +83,18 @@ class VoiceControls(commands.Cog):
             return
         
         if channel.name == name:
-            await self.send(interaction=interaction,msg="❌ Channel already has this name.")
+            await self.send(interaction=interaction,msg="❌ The channel already has this name.")
             return
         
         await channel.edit(name=name) #changing voice channel name
-        await self.send(interaction=interaction,msg="✅ Voice channel name changed successfully.")
+        await self.send(interaction=interaction,msg="✅ Voice channel renamed successfully.")
         return
     
     @app_commands.command(name="claim", description="claim current voice channel")
     @app_commands.checks.cooldown(1, CLAIM_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         channel = interaction.user.voice.channel 
@@ -112,13 +112,13 @@ class VoiceControls(commands.Cog):
         owner_id =  voice_manager.channel_to_owners.get(channel.id)
 
         if owner_id == interaction.user.id: # making sure the command isnt run by owner itself
-            await self.send(interaction=interaction,msg="You are already Voice Channel's owner.")
+            await self.send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
             return 
         
         owner = interaction.guild.get_member(owner_id) if owner_id else None 
         
         if owner and owner in channel.members: # checking if owner is in channel or not
-            await self.send(interaction=interaction,msg="❌ Owner is already in voice channel.")
+            await self.send(interaction=interaction,msg="❌ The current owner is still in the voice channel.")
             return
         
         if owner_id: # making sure if old owner is still in dataset it get removed if its not in voice channel to avoid 2 owner condition
@@ -130,18 +130,18 @@ class VoiceControls(commands.Cog):
         
         if not str(channel.name) == f"{interaction.user.display_name}'s VC":
             await channel.edit(name=f"{interaction.user.display_name}'s VC")
-        await self.send(interaction=interaction,msg="✅ You are owner of voice channel.")
+        await self.send(interaction=interaction,msg="✅ You are now the owner of this voice channel.")
         return
     
     @app_commands.command(name="limit", description="Change Limit for current Voice Channel between 1-99 or enter 0 to reset limit")
     @app_commands.checks.cooldown(1,LIMIT_CHANGE_COOLDOWN)
     async def limit(self,interaction:discord.Interaction,limit:int): 
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         if not 0 <= limit <= 99: # making sure limit isnt more or less than limit by discord
-            await self.send(interaction=interaction,msg="Invalid value limit should be between 1-99 or enter 0 to reset limit.")
+            await self.send(interaction=interaction,msg="❌ Limit must be between 1–99, or 0 to remove the limit.")
             return
         
         voice_manager = self.get_voice_manager() # get VoiceManager cog
@@ -152,19 +152,19 @@ class VoiceControls(commands.Cog):
             return
         
         if channel.user_limit == limit: # avoiding unnecessary api calls 
-           await self.send(interaction, "❌ Channel already has this limit.")
+           await self.send(interaction, "❌ This channel already has that limit.")
            return
         
         if limit == 0: # vc limit reset
             await channel.edit(user_limit=0)
-            await self.send(interaction=interaction,msg=f"✅ Voice channel limit reset (unlimited).")
+            await self.send(interaction=interaction,msg=f"✅ Voice channel limit removed.")
             return
 
         await channel.edit(user_limit=limit)
         await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
         return
         
-    @app_commands.command(name="kick",description="Kick user from voice channel (max 5 at a time)")
+    @app_commands.command(name="kick",description="Kick users from your voice channel (max 5 at a time)")
     @app_commands.checks.cooldown(1,KICK_MEMBER_COOLDOWN)
     async def kick(self,interaction:discord.Interaction,
                    member1: discord.Member,
@@ -174,7 +174,7 @@ class VoiceControls(commands.Cog):
                    member5: discord.Member|None=None):
         
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         members = [member1,member2,member3,member4,member5]
@@ -184,32 +184,50 @@ class VoiceControls(commands.Cog):
         if not await self.verify_ownership(voice_manager,interaction):
             return
         members = set(members) # making sure there are no repeated users
+        kicked_members = []
         for member in members:
 
             if not member:
                 continue
             
             if member.id == interaction.user.id:
-                await self.send(interaction=interaction,msg="You cannot kick yourself from the voice channel.")
                 continue
             
             if not self.user_in_same_voice_channel(interaction, member):
-                await self.send(interaction=interaction,msg=f"{member.mention} is not in your voice channel.")
                 continue
             
             await member.move_to(None)
-            
-            await self.send(interaction=interaction,msg=f"{member.mention} kicked from voice channel.")
 
+            kicked_members.append(member.mention)
             await asyncio.sleep(0.3)  # delay to avoid rate limit
 
+        value = "\n".join(kicked_members) if kicked_members else "No users were kicked."
+
+        embed = discord.Embed(
+            title="Kicked Users",
+            description="The following users were kicked from your voice channel.",
+            color=discord.Color.blurple()
+        )
+
+        embed.add_field(
+            name="Kicked Members:",
+            value=value,
+            inline=False
+        )
+
+        embed.set_footer(
+            text="Note: If a user you entered does not appear above, they were either not in your voice channel or could not be removed."
+            )
+
+
+        await self.send_embed(interaction=interaction,embed=embed)
         return
             
     @app_commands.command(name="lock",description="Lock current voice channel")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def lock(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         voice_manager = self.get_voice_manager() # get VoiceManager cog
@@ -234,7 +252,7 @@ class VoiceControls(commands.Cog):
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def unlock(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         voice_manager = self.get_voice_manager() # get VoiceManager cog
@@ -259,7 +277,7 @@ class VoiceControls(commands.Cog):
     @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
     async def delete(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="You are not in a voice channel.")
+            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
         channel = interaction.user.voice.channel 
@@ -290,7 +308,7 @@ class VoiceControls(commands.Cog):
                    member5: discord.Member|None=None):
 
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "You are not in a voice channel.")
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
         
         members = {member1,member2,member3,member4,member5}
@@ -330,7 +348,7 @@ class VoiceControls(commands.Cog):
 
         embed = discord.Embed(color=discord.Color.blurple())
 
-        value = "\n".join(invite_sent) if invite_sent else " No users were invited."
+        value = "\n".join(invite_sent) if invite_sent else "No users were invited."
         
         embed.add_field(
             name="✅ Invited:",
@@ -350,7 +368,7 @@ class VoiceControls(commands.Cog):
     async def hide(self, interaction: discord.Interaction):
 
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction, msg="You are not in a voice channel.")
+            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -362,7 +380,7 @@ class VoiceControls(commands.Cog):
         everyone = interaction.guild.default_role
 
         if not channel.permissions_for(everyone).view_channel:
-            await self.send(interaction, "Voice channel is already hidden.")
+            await self.send(interaction, "❌ This voice channel is already hidden.")
             return
 
         overwrite = channel.overwrites_for(everyone)
@@ -376,7 +394,7 @@ class VoiceControls(commands.Cog):
     async def unhide(self, interaction: discord.Interaction):
 
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction, msg="You are not in a voice channel.")
+            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -388,7 +406,7 @@ class VoiceControls(commands.Cog):
         everyone = interaction.guild.default_role
 
         if channel.permissions_for(everyone).view_channel:
-            await self.send(interaction, "Voice channel is already visible.")
+            await self.send(interaction, "❌ This voice channel is already visible.")
             return
 
         overwrite = channel.overwrites_for(everyone)
@@ -409,7 +427,7 @@ class VoiceControls(commands.Cog):
         ):
 
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "You are not in a voice channel.")
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -442,7 +460,7 @@ class VoiceControls(commands.Cog):
             overwrites[member] = overwrite
             trusted.append(member.mention)
         
-        view = "\n".join(trusted) if trusted else " No valid user provided to trust."
+        view = "\n".join(trusted) if trusted else "No valid users were provided to trust."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -462,7 +480,7 @@ class VoiceControls(commands.Cog):
     @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
     async def trusted(self,interaction:discord.Interaction):
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "You are not in a voice channel.")
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -483,10 +501,6 @@ class VoiceControls(commands.Cog):
                 
                 if overwrite.view_channel is True and overwrite.connect is True:
                     trusted_members.append(member)
-
-        if not trusted_members:
-            await self.send(interaction,"")
-            return
         
         value = "\n".join(member.mention for member in trusted_members) if trusted_members else " No trusted users found."
 
@@ -516,7 +530,7 @@ class VoiceControls(commands.Cog):
             ):
         
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "You are not in a voice channel.")
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -540,16 +554,17 @@ class VoiceControls(commands.Cog):
                 continue
             
             overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if overwrite.connect is not True and overwrite.view_channel is not True: # preventing unnecessary overwrites but reseting if any one of 2 required permissions are True
+            if overwrite.connect is not True and overwrite.view_channel is not True: # Skip users who are not currently blocked
                  continue
-
-            overwrite.view_channel = None # None for reseting to default settings
-            overwrite.connect = None # None for reseting to default settings
+            
+            # Reset permissions to inherit from role defaults
+            overwrite.view_channel = None 
+            overwrite.connect = None
 
             overwrites[member] = overwrite
             untrusted.append(member.mention)
 
-        view = "\n".join(untrusted) if untrusted else " No valid user provided to untrust."
+        view = "\n".join(untrusted) if untrusted else "No valid users were provided to untrust."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -577,7 +592,7 @@ class VoiceControls(commands.Cog):
                     ):
         
         if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "You are not in a voice channel.")
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
 
         voice_manager = self.get_voice_manager()
@@ -613,7 +628,7 @@ class VoiceControls(commands.Cog):
             
             blocked.append(member.mention)
 
-        view = "\n".join(blocked) if blocked else " No valid user provided to block."
+        view = "\n".join(blocked) if blocked else "No valid users were provided to block."
         
         await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
@@ -626,11 +641,54 @@ class VoiceControls(commands.Cog):
             inline=False
         )
         
-        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Block/Unblock them in this channel.")
+        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
         await self.send_embed(interaction=interaction,embed=embed)
         return
 
+    @app_commands.command(name="blocked",description="Shows Blocked users for current voice channel.")
+    @app_commands.checks.cooldown(1,TRUSTED_COOLDOWN)
+    async def blocked(self,interaction:discord.Interaction):
+        if not self.user_in_voice_channel_check(interaction):
+            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
+            return
 
+        voice_manager = self.get_voice_manager()
+
+        if not await self.verify_ownership(voice_manager, interaction):
+            return
+
+        channel = interaction.user.voice.channel
+        blocked_members = []
+
+        for member , overwrite in channel.overwrites.items():
+            if isinstance(member,discord.Member):
+                if member.id == interaction.user.id: # owner should never appear in blocked list
+                    continue
+                
+                if member.bot:
+                    continue
+                
+                if overwrite.view_channel is False and overwrite.connect is False:
+                    blocked_members.append(member)
+        
+        value = "\n".join(member.mention for member in blocked_members) if blocked_members else "No blocked users found."
+
+        embed = discord.Embed(
+            title="Blocked Users",
+            description="These users are currently blocked from the voice channel.",
+            color=discord.Color.blurple()
+            )
+
+        embed.add_field(
+            name="Currently Blocked :",
+            value=value,
+            inline=False
+        )
+        
+        await self.send_embed(interaction=interaction,embed=embed)
+        return
+    
+    
     
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
