@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from typing import Optional
 import asyncio
+from cogs.voice_interface import build_panel_embed, VoicePanelView
 
 class VoiceManager(commands.Cog):
     def __init__(self,bot:commands.Bot) -> None:
@@ -65,7 +66,11 @@ class VoiceManager(commands.Cog):
             self.channel_to_owners[new_channel.id] = member.id
             self.owners_to_channel[member.id] = new_channel.id
 
-            
+            try:
+                await new_channel.send(content=f"Welcome {member.mention} ❤️\n\n",embed=build_panel_embed(), view=VoicePanelView())
+            except discord.Forbidden: # DM Closed
+                pass
+
             await member.move_to(new_channel)
 
         # Delete empty channels and remove ownership

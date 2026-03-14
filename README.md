@@ -1,6 +1,13 @@
-# 🎙️ VoiceForge
+# 🎙️ VoiceForge v2.0
 
-A self-hosted Discord bot for dynamic temporary voice channel management, with a TempVoice-style dashboard planned.
+A self-hosted Discord bot for dynamic temporary voice channel management, featuring a fully interactive TempVoice-style dashboard.
+
+## ✨ What's New in v2.0
+
+- 🎛️ **Interactive Panel** — TempVoice-style UI with buttons for all channel controls
+- 📨 **Native Member Search** — Discord's built-in member picker for invite, trust, and ban
+- 👑 **Smart Claim System** — Automatically handles ownership recovery
+- 🔒 **Panel sent directly into your temp VC** — No extra channels needed
 
 ## ✨ Features
 
@@ -8,19 +15,16 @@ A self-hosted Discord bot for dynamic temporary voice channel management, with a
 - Automatically deletes empty channels when everyone leaves
 - Full ownership system with claim and transfer support
 - Rich set of slash commands for channel management
-
-## 🗺️ Roadmap
-
-- [ ] Persistent ownership storage to survive bot restarts
-- [ ] Fully interactive panel for voice channel controls (TempVoice-style UI)
+- Interactive button panel sent directly into each created voice channel
 
 ## 📁 Project Structure
 ```
-├── main.py              # Bot entry point and configuration
-├── config.py            # Cooldown and limit constants
-├── logger.py            # Error and info logging setup
+├── main.py                  # Bot entry point and configuration
+├── config.py                # Cooldown and limit constants
+├── logger.py                # Error and info logging setup
 ├── cogs/
 │   ├── voice_manager.py     # Auto voice channel creation and deletion
+│   ├── voice_interface.py   # Interactive panel UI (buttons, modals, selects)
 │   ├── voice_controls.py    # All slash commands for channel control
 │   ├── error_handling.py    # Global error handler
 │   └── sync_command.py      # Slash command sync and help utilities
@@ -30,7 +34,7 @@ A self-hosted Discord bot for dynamic temporary voice channel management, with a
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/code-1py/VoiceForge.git
+git clone https://github.com/code-1py/VoiceForge
 cd VoiceForge
 ```
 
@@ -64,7 +68,33 @@ python main.py
    - `Move Members`
    - `View Channels`
    - `Connect`
-   - `Send Messages` (for DM invites)
+   - `Send Messages`
+
+## 🎛️ Interactive Panel
+
+When a user joins the Create VC channel, a panel is automatically sent inside their new voice channel with the following buttons:
+
+| Button | Description |
+|---|---|
+| 🔒 Lock | Block others from joining |
+| 🔓 Unlock | Allow others to join |
+| 🙈 Hide | Hide from channel list |
+| 👁️ Show | Make visible in channel list |
+| ✏️ Rename | Change your channel name |
+| 👥 Set Limit | Cap max members (0 = unlimited) |
+| 📨 Invite | Search and allow a member to join |
+| 👢 Kick | Disconnect a member |
+| 🚫 Ban | Search and block a member |
+| ✅ Trust | Search and give full permissions |
+| ⛔ Untrust | Remove a member's trust |
+| ✔️ Unblock | Remove a member's ban |
+| 🔁 Transfer | Give ownership to someone else |
+| 👑 Claim | Claim an abandoned channel |
+| 🗑️ Delete | Delete your channel permanently |
+
+> All controls are owner-only except **Claim**.
+
+You can also manually send a panel to any channel using `/panel` (requires Manage Channels permission).
 
 ## 🛠️ Owner Commands (Prefix: `!`)
 
@@ -126,8 +156,8 @@ Logs are stored in the `Logs/` directory:
 - All voice control commands only work inside channels created by this bot
 - Only the **channel owner** can use management commands
 - Channels are automatically deleted when they become empty
-- Ownership data is stored **in-memory** and resets on bot restart
+- Ownership data is stored in-memory and resets on bot restart — use **Claim** to re-register
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE)

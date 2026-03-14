@@ -34,6 +34,7 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         await self.load_extension("cogs.voice_manager")
+        await self.load_extension("cogs.voice_interface")
         await self.load_extension("cogs.voice_controls")
         await self.load_extension("cogs.error_handling")
         await self.load_extension("cogs.sync_command")
@@ -62,7 +63,6 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     
     if error_log:  # Log unexpected errors for debugging
         log_error(message="Unexpected Error - Location : on_app_command_error",exc_info=error)
-    
     
 
 
