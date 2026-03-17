@@ -253,6 +253,9 @@ class VoicePanelView(discord.ui.View):
 
     # ── core checks ───────────────────────────
 
+    def _is_guild(self,interaction: discord.Interaction) -> bool:
+        return isinstance(interaction.guild, discord.Guild)
+
     async def _cooldown_response(self,interaction:discord.Interaction,time:float):
         cooldown_remaining = round(time)
         await interaction.response.send_message(f"⏳ Command on cooldown. Try again in **{cooldown_remaining}s**.",ephemeral=True)
@@ -331,11 +334,13 @@ class VoicePanelView(discord.ui.View):
 
         return vm, channel
 
-    # ── ROW 0 — Privacy ───────────────────────
 
     @discord.ui.button(emoji="🔒", style=discord.ButtonStyle.secondary,
                        custom_id="panel:lock", row=0)
     async def lock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -347,6 +352,9 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🔓", style=discord.ButtonStyle.secondary,
                        custom_id="panel:unlock", row=1)
     async def unlock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -358,6 +366,9 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🙈", style=discord.ButtonStyle.secondary,
                        custom_id="panel:hide", row=0)
     async def hide(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -369,6 +380,9 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="👁️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:show", row=0)
     async def show(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -380,6 +394,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="✏️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:rename", row=0)
     async def rename(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
 
         if not channel:
@@ -395,11 +413,14 @@ class VoicePanelView(discord.ui.View):
             return
         await interaction.response.send_modal(RenameModal(channel))
 
-    # ── ROW 1 — Members ───────────────────────
 
     @discord.ui.button(emoji="👥", style=discord.ButtonStyle.secondary,
                        custom_id="panel:limit", row=0)
     async def set_limit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -408,6 +429,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="📨", style=discord.ButtonStyle.secondary,
                        custom_id="panel:invite", row=1)
     async def invite(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -420,6 +445,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="👢", style=discord.ButtonStyle.secondary,
                        custom_id="panel:kick", row=1)
     async def kick(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -458,6 +487,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🚫", style=discord.ButtonStyle.secondary,
                        custom_id="panel:ban", row=2)
     async def ban(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -467,11 +500,14 @@ class VoicePanelView(discord.ui.View):
             ephemeral=True,
         )
 
-    # ── ROW 2 — Trust / Untrust / Unblock / Transfer ──
 
     @discord.ui.button(emoji="✅", style=discord.ButtonStyle.secondary,
                        custom_id="panel:trust", row=1)
     async def trust(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -484,6 +520,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="⛔", style=discord.ButtonStyle.secondary,
                        custom_id="panel:untrust", row=1)
     async def untrust(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -525,6 +565,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="✔️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:unblock", row=2)
     async def unblock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -565,6 +609,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🔁", style=discord.ButtonStyle.secondary,
                        custom_id="panel:transfer", row=2)
     async def transfer(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
@@ -596,6 +644,10 @@ class VoicePanelView(discord.ui.View):
                 vm.channel_to_owners[channel.id] = target.id
                 vm.owners_to_channel.pop(old_owner_id, None)
                 vm.owners_to_channel[target.id] = channel.id
+                
+                if not inner.channel.name == f"{target.display_name}'s VC":
+                    await inner.channel.edit(name=f"{target.display_name}'s VC")
+                    
                 await inner.response.send_message(
                     f"🔁 Ownership transferred to **{target.display_name}**.", ephemeral=True
                 )
@@ -607,10 +659,14 @@ class VoicePanelView(discord.ui.View):
             "Select new channel owner:", view=view, ephemeral=True
         )
 
-    # ── ROW 3 — Claim / Delete ─────────────────
+
 
     @discord.ui.button(emoji="👑", style=discord.ButtonStyle.secondary,custom_id="panel:claim", row=2)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+            
         vm = get_vm(interaction.client)
 
         voice = interaction.user.voice
@@ -635,6 +691,7 @@ class VoicePanelView(discord.ui.View):
         ):
             vm.channel_to_owners[channel.id] = interaction.user.id
             vm.owners_to_channel[interaction.user.id] = channel.id
+            await interaction.channel.edit(name=f"{interaction.user.display_name}'s VC")
             return await interaction.response.send_message(
                 "👑 You have **claimed** this channel!", ephemeral=True
             )
@@ -677,6 +734,10 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🗑️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:delete", row=2)
     async def delete(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
+
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return

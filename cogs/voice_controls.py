@@ -11,6 +11,9 @@ class VoiceControls(commands.Cog):
     def __init__(self, bot:commands.Bot):
         self.bot = bot
     
+    def is_guild(self,interaction: discord.Interaction) -> bool:
+        return isinstance(interaction.guild, discord.Guild)
+    
     async def verify_ownership(self,voice_manager:VoiceManager,interaction:discord.Interaction)-> bool: # verifying ownership 
         if not self.user_in_voice_channel_check(interaction): # main command handles the user in voice but still to prevent crashes we check user's voice status
             return False
@@ -62,6 +65,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="rename", description="Rename your voice channel (max 32 characters)")
     @app_commands.checks.cooldown(1, RENAME_COOLDOWN)
     async def rename(self, interaction: discord.Interaction, name: str):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -93,6 +99,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="claim", description="claim current voice channel")
     @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -136,6 +145,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="limit", description="Change Limit for current Voice Channel between 1-99 or enter 0 to reset limit")
     @app_commands.checks.cooldown(1,LIMIT_CHANGE_COOLDOWN)
     async def limit(self,interaction:discord.Interaction,limit:int): 
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -172,7 +184,9 @@ class VoiceControls(commands.Cog):
                    member3: discord.Member|None=None,
                    member4: discord.Member|None=None,
                    member5: discord.Member|None=None):
-        
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -226,6 +240,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="lock",description="Lock current voice channel")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def lock(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -251,6 +268,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="unlock",description="Unlock current voice channel")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def unlock(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -276,6 +296,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="delete",description="Delete current voice channel")
     @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
     async def delete(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
@@ -306,6 +329,9 @@ class VoiceControls(commands.Cog):
                    member3: discord.Member|None=None,
                    member4: discord.Member|None=None,
                    member5: discord.Member|None=None):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
 
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -366,6 +392,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def hide(self, interaction: discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
 
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
@@ -392,6 +421,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="unhide",description="Make the current voice channel visible to everyone.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def unhide(self, interaction: discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
 
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
@@ -425,6 +457,9 @@ class VoiceControls(commands.Cog):
         member4: discord.Member | None = None,
         member5: discord.Member | None = None
         ):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
 
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -479,6 +514,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="trusted",description="Shows trusted users.")
     @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def trusted(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
@@ -528,6 +566,9 @@ class VoiceControls(commands.Cog):
             member4: discord.Member | None = None,
             member5: discord.Member | None = None
             ):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -590,6 +631,9 @@ class VoiceControls(commands.Cog):
                     member4: discord.Member | None = None,
                     member5: discord.Member | None = None
                     ):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -648,6 +692,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="blocked",description="Shows blocked users.")
     @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def blocked(self,interaction:discord.Interaction):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
             return
@@ -697,6 +744,9 @@ class VoiceControls(commands.Cog):
             member4: discord.Member | None = None,
             member5: discord.Member | None = None
             ):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction, "❌ You must be in a voice channel to use this command.")
@@ -753,6 +803,9 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="transfer",description="Transfer your voice channel to another member in the channel.")
     @app_commands.checks.cooldown(1,CLAIM_TRANSFER_COOLDOWN)
     async def transfer(self,interaction:discord.Interaction,new_owner:discord.Member):
+        if not self.is_guild(interaction):
+            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
             return
