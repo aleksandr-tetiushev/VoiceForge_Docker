@@ -569,7 +569,7 @@ class VoicePanelView(discord.ui.View):
         if not channel:
             return
         
-        retry_after = self._cooldowns.check("rename",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
+        retry_after = self._cooldowns.check("transfer",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
         
         if retry_after:
             await self._cooldown_response(interaction,retry_after)
@@ -619,7 +619,7 @@ class VoicePanelView(discord.ui.View):
                 "❌ You must be in a temp voice channel.", ephemeral=True
             )
         
-        retry_after = self._cooldowns.check("rename",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
+        retry_after = self._cooldowns.check("claim",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
         
         if retry_after:
             await self._cooldown_response(interaction,retry_after)
