@@ -3,7 +3,12 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import config
+from discord.ext.commands.cooldowns import CooldownMapping
+from config import *
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from cogs.voice_manager import VoiceManager
 
 def get_vm(bot: commands.Bot):
     return bot.cogs.get("VoiceManager")
@@ -199,6 +204,40 @@ def build_member_select(
 
     return DynamicSelect()
 
+#─────────────Cooldown Manager──────────#
+
+class CooldownManager:
+    
+    def  __init__(self):
+        # key -> {id : Cooldown}
+        self._mappings : dict[str,dict[int, commands.Cooldown]] = {}
+
+    def _get_bucket_key(self,interaction:discord.Interaction,bucket_type:commands.BucketType)->int:
+        """Extract bucket id according to bucket type"""
+        match bucket_type:
+            case commands.BucketType.user:
+                return interaction.user.id
+            case commands.BucketType.channel:
+                return interaction.channel_id
+            case commands.BucketType.guild:
+                return interaction.guild_id
+            case _:
+                return interaction.channel_id
+
+    def check(self,key: str,rate: int,per: float,interaction: discord.Interaction,bucket_type: commands.BucketType = commands.BucketType.channel) -> float | None:
+        
+        if key not in self._mappings:
+            self._mappings[key] = {}
+
+        bucket_id = self._get_bucket_key(interaction, bucket_type)
+
+        if bucket_id not in self._mappings[key]:
+            self._mappings[key][bucket_id] = commands.Cooldown(rate, per)
+
+        return self._mappings[key][bucket_id].update_rate_limit()
+    
+    
+    
 
 
 #─────────────PANEL VIEW────────────────
@@ -210,7 +249,12 @@ class VoicePanelView(discord.ui.View):
 
     # ── core checks ───────────────────────────
 
-    def _is_owner(self, vm, interaction: discord.Interaction,
+    async def _cooldown_response(self,interaction:discord.Interaction,time:float):
+        cooldown_remaining = round(time)
+        await interaction.response.send_message(f"⏳ Command on cooldown. Try again in **{cooldown_remaining}s**.")
+
+    
+    def _is_owner(self, vm: "VoiceManager", interaction: discord.Interaction,
                   channel: discord.VoiceChannel) -> bool:
         return vm.channel_to_owners.get(channel.id) == interaction.user.id
 
