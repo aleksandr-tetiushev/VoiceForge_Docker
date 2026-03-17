@@ -207,7 +207,7 @@ def build_member_select(
 #─────────────Cooldown Manager──────────#
 
 class CooldownManager:
-    
+
     def  __init__(self):
         # key -> {id : Cooldown}
         self._mappings : dict[str,dict[int, commands.Cooldown]] = {}
@@ -244,14 +244,18 @@ class CooldownManager:
 
 
 class VoicePanelView(discord.ui.View):
+    
+    _cooldowns = CooldownManager() # shared across all instances 
+
     def __init__(self):
         super().__init__(timeout=None)
+        
 
     # ── core checks ───────────────────────────
 
     async def _cooldown_response(self,interaction:discord.Interaction,time:float):
         cooldown_remaining = round(time)
-        await interaction.response.send_message(f"⏳ Command on cooldown. Try again in **{cooldown_remaining}s**.")
+        await interaction.response.send_message(f"⏳ Command on cooldown. Try again in **{cooldown_remaining}s**.",ephemeral=True)
 
     
     def _is_owner(self, vm: "VoiceManager", interaction: discord.Interaction,
@@ -377,6 +381,16 @@ class VoicePanelView(discord.ui.View):
                        custom_id="panel:rename", row=0)
     async def rename(self, interaction: discord.Interaction, button: discord.ui.Button):
         vm, channel = await self._owner_check(interaction)
+
+        if not channel:
+            return
+        
+        retry_after = self._cooldowns.check("rename",1,float(RENAME_COOLDOWN),interaction)
+        
+        if retry_after:
+            await self._cooldown_response(interaction,retry_after)
+            return
+
         if not channel:
             return
         await interaction.response.send_modal(RenameModal(channel))
@@ -554,6 +568,12 @@ class VoicePanelView(discord.ui.View):
         vm, channel = await self._owner_check(interaction)
         if not channel:
             return
+        
+        retry_after = self._cooldowns.check("rename",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
+        
+        if retry_after:
+            await self._cooldown_response(interaction,retry_after)
+            return
 
         members = [m for m in channel.members if m.id != interaction.user.id]
         if not members:
@@ -598,6 +618,12 @@ class VoicePanelView(discord.ui.View):
             return await interaction.response.send_message(
                 "❌ You must be in a temp voice channel.", ephemeral=True
             )
+        
+        retry_after = self._cooldowns.check("rename",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
+        
+        if retry_after:
+            await self._cooldown_response(interaction,retry_after)
+            return
 
         channel = voice.channel
 

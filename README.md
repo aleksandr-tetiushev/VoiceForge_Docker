@@ -111,7 +111,7 @@ You can also manually send a panel to any channel using `/panel` (requires Manag
 
 | Command | Description | Cooldown |
 |---|---|---|
-| `/rename <name>` | Rename your voice channel (max 32 characters) | 60s |
+| `/rename <name>` | Rename your voice channel (max 32 characters) | 300s |
 | `/limit <number>` | Set user limit (1–99), or 0 to remove | 3s |
 | `/delete` | Delete your voice channel | 5s |
 | `/lock` | Lock the channel so no one can join | 4s |
@@ -123,8 +123,8 @@ You can also manually send a panel to any channel using `/panel` (requires Manag
 
 | Command | Description | Cooldown |
 |---|---|---|
-| `/claim` | Claim an unowned or abandoned channel | 60s |
-| `/transfer <member>` | Transfer ownership to another member | 60s |
+| `/claim` | Claim an unowned or abandoned channel | 90s |
+| `/transfer <member>` | Transfer ownership to another member | 90s |
 
 ### Member Control
 
