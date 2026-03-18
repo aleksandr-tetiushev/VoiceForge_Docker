@@ -18,6 +18,8 @@ class VoiceManager(commands.Cog):
         self.category_id:int = int(bot.category_id)
         self.create_channel_id:int = int(bot.create_channel_id)
         self.guild_id :int= int(bot.server_id)
+
+        self.cleanup_empty_channels.start()
         
     @commands.Cog.listener()
     async def on_ready(self):
@@ -29,6 +31,35 @@ class VoiceManager(commands.Cog):
             await self.create_temp_channel(member)
         
         return
+
+    @tasks.loop(minutes=5)  # Run every 5 minutes
+    async def cleanup_empty_channels(self):
+
+        category = self.bot.get_channel(self.category_id)
+
+        if category is None or not isinstance(category, discord.CategoryChannel):
+            return
+
+        for channel in category.channels:
+    
+            if isinstance(channel, discord.VoiceChannel):
+                # Delete if empty
+                if len(channel.members) == 0 and not channel.id == self.create_channel_id:
+                    owner_id = self.channel_to_owners.pop(channel.id, None)
+                    if owner_id:
+                        self.owners_to_channel.pop(owner_id, None)
+            
+                    try:
+                
+                        await channel.delete()
+                    except discord.Forbidden:
+                        pass
+    
+    @cleanup_empty_channels.before_loop
+    async def before_cleanup(self):
+        """Wait for bot to be ready before running cleanup"""
+        await self.bot.wait_until_ready()
+
 
     async def create_temp_channel(self,member:discord.Member):
         if member.bot:
