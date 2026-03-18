@@ -1,6 +1,6 @@
 from __future__ import annotations
 import discord
-from discord.ext import commands
+from discord.ext import commands , tasks
 from typing import Optional
 import asyncio
 from cogs.voice_interface import build_panel_embed, VoicePanelView
@@ -17,7 +17,70 @@ class VoiceManager(commands.Cog):
         # convert env IDs to int once
         self.category_id:int = int(bot.category_id)
         self.create_channel_id:int = int(bot.create_channel_id)
+        self.guild_id :int= int(bot.server_id)
         
+    @commands.Cog.listener()
+    async def on_ready(self):
+        channel = self.get_creator_channel() # trigger 
+        if not channel or not channel.members:
+            return
+        
+        for member in channel.members:
+            await self.create_temp_channel(member)
+        
+        return
+
+    async def create_temp_channel(self,member:discord.Member):
+        if member.bot:
+            return
+        guild: discord.Guild = member.guild
+        category = guild.get_channel(self.category_id)
+
+        if category is None or not isinstance(category, discord.CategoryChannel):
+            return
+        
+        member_owned_channel = self.owners_to_channel.get(member.id)
+
+        if member_owned_channel is not None: # Move user into their existing owned channel rather than creating a new one
+            existing_channel = guild.get_channel(member_owned_channel)
+            if isinstance(existing_channel,discord.VoiceChannel):
+                return await member.move_to(existing_channel) 
+            else:
+                # Clean up stale data
+                self.owners_to_channel.pop(member.id, None)
+                self.channel_to_owners.pop(member_owned_channel, None)
+
+        new_channel: discord.VoiceChannel = await guild.create_voice_channel(
+                name=f"{member.display_name}'s VC",
+                category=category,
+                user_limit=4
+            )
+
+        # Store ownership
+        self.channel_to_owners[new_channel.id] = member.id
+        self.owners_to_channel[member.id] = new_channel.id
+
+        try:
+            await new_channel.send(content=f"Welcome {member.mention} ❤️\n\n",embed=build_panel_embed(), view=VoicePanelView())
+        except discord.Forbidden: # DM Closed
+            pass
+
+        await member.move_to(new_channel)
+
+    def get_creator_channel(self) -> discord.VoiceChannel | None:
+        guild = self.bot.get_guild(self.guild_id)
+
+        if guild is None:
+            return None
+
+        creator_channel = guild.get_channel(self.create_channel_id)
+
+        if isinstance(creator_channel, discord.VoiceChannel):
+            return creator_channel
+
+        return None
+    
+    
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None: # Update data in case of manual deletion by server mods or other bots
@@ -86,3 +149,8 @@ class VoiceManager(commands.Cog):
 # Setup function to load cog into the main module 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VoiceManager(bot))
+
+
+
+# Preserving creator vc - not done
+# permission management - not done
