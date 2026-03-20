@@ -19,7 +19,7 @@ class VoiceManager(commands.Cog):
         self.create_channel_id:int = int(bot.create_channel_id)
         self.guild_id :int= int(bot.server_id)
 
-        self.cleanup_empty_channels.start()
+        self.cleanup_empty_channels.start() # start cleanup
         
     @commands.Cog.listener()
     async def on_ready(self):
@@ -33,7 +33,7 @@ class VoiceManager(commands.Cog):
         return
 
     @tasks.loop(minutes=5)  # Run every 5 minutes
-    async def cleanup_empty_channels(self):
+    async def cleanup_empty_channels(self): # 
 
         category = self.bot.get_channel(self.category_id)
 
@@ -43,14 +43,13 @@ class VoiceManager(commands.Cog):
         for channel in category.channels:
     
             if isinstance(channel, discord.VoiceChannel):
-                # Delete if empty
+                # Delete if empty and prevent bot from deleting creator channel
                 if len(channel.members) == 0 and not channel.id == self.create_channel_id:
                     owner_id = self.channel_to_owners.pop(channel.id, None)
                     if owner_id:
                         self.owners_to_channel.pop(owner_id, None)
             
                     try:
-                
                         await channel.delete()
                     except discord.Forbidden:
                         pass
@@ -81,11 +80,30 @@ class VoiceManager(commands.Cog):
                 self.owners_to_channel.pop(member.id, None)
                 self.channel_to_owners.pop(member_owned_channel, None)
 
-        new_channel: discord.VoiceChannel = await guild.create_voice_channel(
-                name=f"{member.display_name}'s VC",
-                category=category,
-                user_limit=4
+        overwrites = {
+            member: discord.PermissionOverwrite(
+                connect=True,
+                read_message_history=True,
+                speak=True,
+                stream=True,
+                use_voice_activation=True,
+                view_channel=True
+            ),
+            
+            self.bot.user: discord.PermissionOverwrite(
+                read_message_history=True,
+                send_messages=True,
+                connect=True,
+                view_channel=True
             )
+        }
+        
+        new_channel: discord.VoiceChannel = await guild.create_voice_channel(
+            name=f"{member.display_name}'s Vc",
+            category=category,
+            user_limit=4,
+            overwrites=overwrites
+        )
 
         # Store ownership
         self.channel_to_owners[new_channel.id] = member.id
@@ -111,7 +129,7 @@ class VoiceManager(commands.Cog):
 
         return None
     
-    
+
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None: # Update data in case of manual deletion by server mods or other bots
@@ -148,12 +166,29 @@ class VoiceManager(commands.Cog):
                     self.owners_to_channel.pop(member.id, None)
                     self.channel_to_owners.pop(member_owned_channel, None)
              
-
+            overwrites = {
+                member: discord.PermissionOverwrite(
+                    connect=True,
+                    read_message_history=True,
+                    speak=True,
+                    stream=True,
+                    use_voice_activation=True,
+                    view_channel=True
+                ),
+                
+                self.bot.user: discord.PermissionOverwrite(
+                    read_message_history=True,
+                    send_messages=True,
+                    connect=True,
+                    view_channel=True
+                )
+            }
 
             new_channel: discord.VoiceChannel = await guild.create_voice_channel(
                 name=f"{member.display_name}'s VC",
                 category=category,
-                user_limit=4
+                user_limit=4,
+                overwrites=overwrites
             )
 
             # Store ownership
@@ -183,5 +218,5 @@ async def setup(bot: commands.Bot) -> None:
 
 
 
-# Preserving creator vc - not done
+
 # permission management - not done
