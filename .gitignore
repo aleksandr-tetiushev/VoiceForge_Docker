@@ -5,3 +5,4 @@ venv/
 .env
 Logs/
 .vscode/
+known_bugs.py
