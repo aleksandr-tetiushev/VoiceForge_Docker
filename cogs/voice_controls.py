@@ -573,10 +573,16 @@ class VoiceControls(commands.Cog):
                 if member.bot:
                     continue
                 
-                if overwrite.view_channel is True and overwrite.connect is True:
+                if (overwrite.connect is True and 
+                    overwrite.speak is True and 
+                    overwrite.stream is True and 
+                    overwrite.use_voice_activation is True and 
+                    overwrite.view_channel is True
+                    ):
+                    
                     trusted_members.append(member)
         
-        value = "\n".join(member.mention for member in trusted_members) if trusted_members else " No trusted users found."
+        value = "\n".join(member.mention for member in trusted_members) if trusted_members else "No trusted users found."
 
         embed = discord.Embed(
             title="Trusted Users",
