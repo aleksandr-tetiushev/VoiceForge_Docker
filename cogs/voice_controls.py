@@ -840,10 +840,35 @@ class VoiceControls(commands.Cog):
         # adding ownership data for new owner
         voice_manager.channel_to_owners[channel.id] = new_owner.id
         voice_manager.owners_to_channel[new_owner.id] = channel.id
-        
-        if not str(channel.name) == f"{new_owner.display_name}'s VC": # renaming voice channel 
-            await channel.edit(name=f"{new_owner.display_name}'s VC")
 
+        owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
+            connect=True,
+            read_message_history=True,
+            speak=True,
+            stream=True,
+            use_voice_activation=True,
+            view_channel=True
+        )
+
+        overwrites = {
+            new_owner : owner_overwrite,
+            self.bot.user: discord.PermissionOverwrite( # bot's permissions 
+                connect=True,
+                view_channel=True,
+                send_messages=True
+            )
+        }
+
+        channel_edit = {
+            'overwrites' : overwrites,
+            'user_limit' : None
+        }
+        
+        if not channel.name == f"{new_owner.display_name}'s VC": # renaming voice channel 
+            channel_edit['name'] = f"{new_owner.display_name}'s VC"
+
+        await channel.edit(**channel_edit)
+        
         await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
         return
     
