@@ -260,7 +260,38 @@ class VoicePanelView(discord.ui.View):
         cooldown_remaining = round(time)
         await interaction.response.send_message(f"⏳ Command on cooldown. Try again in **{cooldown_remaining}s**.",ephemeral=True)
 
-    
+    def _get_trusted_members(self,channel:discord.VoiceChannel)-> tuple[list[discord.Member], list[discord.Member]]:
+
+        """Returns (trusted_members, owner) from channel overwrites"""
+
+        if not isinstance(channel,discord.VoiceChannel):
+            return [] , []
+        
+        trusted = []
+        owner = []
+
+        for target, overwrite in channel.overwrites.items():
+                if isinstance(target,discord.Member):
+                    if (overwrite.connect is True and 
+                          overwrite.speak is True and 
+                          overwrite.stream is True and 
+                          overwrite.use_voice_activation is True and 
+                          overwrite.view_channel is True and
+                          overwrite.read_message_history is True): # making sure user have those permissiong given while voice channel creation
+                        
+                        owner.append(target)
+
+                    elif (overwrite.connect is True and 
+                        overwrite.speak is True and 
+                        overwrite.stream is True and 
+                        overwrite.use_voice_activation is True and 
+                        overwrite.view_channel is True): # making sure user have permission gave when trusted
+                        
+                        trusted.append(target)
+
+
+        return trusted , owner
+   
     def _is_owner(self, vm: "VoiceManager", interaction: discord.Interaction,
                   channel: discord.VoiceChannel) -> bool:
         return vm.channel_to_owners.get(channel.id) == interaction.user.id
@@ -644,9 +675,35 @@ class VoicePanelView(discord.ui.View):
                 vm.channel_to_owners[channel.id] = target.id
                 vm.owners_to_channel.pop(old_owner_id, None)
                 vm.owners_to_channel[target.id] = channel.id
+
+                owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
+                    connect=True,
+                    read_message_history=True,
+                    speak=True,
+                    stream=True,
+                    use_voice_activation=True,
+                    view_channel=True
+                )
+
+                overwrites = {
+                    target : owner_overwrite,
+                    interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+                        connect=True,
+                        view_channel=True,
+                        send_messages=True
+                    )
+                }
+
+                channel_edit = {
+                    'overwrites' : overwrites,
+                    'user_limit' : None
+                }
+
+                if not channel.name == f"{target.display_name}'s VC":
+                    channel_edit['name'] = f"{target.display_name}'s VC"
+
+                await channel.edit(**channel_edit) # editing channel with one api call
                 
-                if not inner.channel.name == f"{target.display_name}'s VC":
-                    await inner.channel.edit(name=f"{target.display_name}'s VC")
                     
                 await inner.response.send_message(
                     f"🔁 Ownership transferred to **{target.display_name}**.", ephemeral=True
@@ -683,15 +740,44 @@ class VoicePanelView(discord.ui.View):
 
         channel = voice.channel
 
+        owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
+            connect=True,
+            read_message_history=True,
+            speak=True,
+            stream=True,
+            use_voice_activation=True,
+            view_channel=True
+        )
+
+        overwrites = {
+            interaction.user : owner_overwrite,
+            interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+                connect=True,
+                view_channel=True,
+                send_messages=True
+            )
+        }
+
+
         # In temp category but no ownership record — register them as owner directly
         if (
             vm is not None
             and channel.category_id == vm.bot.category_id
             and channel.id not in vm.channel_to_owners
-        ):
+        ):     
             vm.channel_to_owners[channel.id] = interaction.user.id
             vm.owners_to_channel[interaction.user.id] = channel.id
-            await interaction.channel.edit(name=f"{interaction.user.display_name}'s VC")
+
+            channel_edit = {
+                'overwrites' : overwrites,
+                'user_limit' : None
+            }
+
+            if not channel.name == f"{interaction.user.display_name}'s VC":
+                channel_edit['name'] = f"{interaction.user.display_name}'s VC"
+
+            await channel.edit(**channel_edit) # editing channel with one api call
+
             return await interaction.response.send_message(
                 "👑 You have **claimed** this channel!", ephemeral=True
             )
@@ -727,6 +813,18 @@ class VoicePanelView(discord.ui.View):
         vm.channel_to_owners[channel.id] = interaction.user.id
         vm.owners_to_channel.pop(current_owner_id, None)
         vm.owners_to_channel[interaction.user.id] = channel.id
+
+
+        channel_edit = {
+            'overwrites' : overwrites,
+            'user_limit' : None # reset limit
+        }
+
+        if not channel.name == f"{interaction.user.display_name}'s VC":
+            channel_edit['name'] = f"{interaction.user.display_name}'s VC"
+
+        await channel.edit(**channel_edit) # editing channel with one api call
+        
         await interaction.response.send_message(
             "👑 You have **claimed** this channel!", ephemeral=True
         )
