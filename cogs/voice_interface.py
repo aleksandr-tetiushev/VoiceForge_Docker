@@ -285,7 +285,7 @@ class VoicePanelView(discord.ui.View):
                         overwrite.speak is True and 
                         overwrite.stream is True and 
                         overwrite.use_voice_activation is True and 
-                        overwrite.view_channel is True): # making sure user have permission gave when trusted
+                        overwrite.view_channel is True): # making sure user have permission given when trusted
                         
                         trusted.append(target)
 

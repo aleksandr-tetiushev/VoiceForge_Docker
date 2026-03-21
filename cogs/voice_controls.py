@@ -512,18 +512,28 @@ class VoiceControls(commands.Cog):
                 continue
             
             overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if overwrite.connect is True and overwrite.view_channel is True: # preventing unnecessary overwrites
+            if (overwrite.connect is True and 
+                overwrite.speak is True and 
+                overwrite.stream is True and 
+                overwrite.use_voice_activation is True and 
+                overwrite.view_channel is True
+                ): # preventing unnecessary overwrites
                  continue
 
             overwrite.view_channel = True
             overwrite.connect = True
+            overwrite.stream = True
+            overwrite.use_voice_activation = True
+            overwrite.speak = True
 
             overwrites[member] = overwrite
             trusted.append(member.mention)
         
         view = "\n".join(trusted) if trusted else "No valid users were provided to trust."
         
-        await channel.edit(overwrites=overwrites)
+        if trusted:
+            await channel.edit(overwrites=overwrites)
+            
         embed = discord.Embed(
             color=discord.Color.blurple()
             )
