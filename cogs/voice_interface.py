@@ -696,7 +696,7 @@ class VoicePanelView(discord.ui.View):
 
                 channel_edit = {
                     'overwrites' : overwrites,
-                    'user_limit' : None
+                    'user_limit' : 0
                 }
 
                 if not channel.name == f"{target.display_name}'s VC":
@@ -770,7 +770,7 @@ class VoicePanelView(discord.ui.View):
 
             channel_edit = {
                 'overwrites' : overwrites,
-                'user_limit' : None
+                'user_limit' : 0
             }
 
             if not channel.name == f"{interaction.user.display_name}'s VC":
@@ -817,7 +817,7 @@ class VoicePanelView(discord.ui.View):
 
         channel_edit = {
             'overwrites' : overwrites,
-            'user_limit' : None # reset limit
+            'user_limit' : 0 # reset limit
         }
 
         if not channel.name == f"{interaction.user.display_name}'s VC":
