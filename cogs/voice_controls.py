@@ -637,19 +637,29 @@ class VoiceControls(commands.Cog):
                 continue
             
             overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if overwrite.connect is not True and overwrite.view_channel is not True: # Skip users who are not currently blocked
+            if (overwrite.connect is not True and 
+                    overwrite.speak is not True and 
+                    overwrite.stream is not True and 
+                    overwrite.use_voice_activation is not True and 
+                    overwrite.view_channel is not True
+                    ): # Skip users who are not currently trusted
                  continue
             
             # Reset permissions to inherit from role defaults
-            overwrite.view_channel = None 
+            overwrite.view_channel = None
             overwrite.connect = None
+            overwrite.stream = None
+            overwrite.use_voice_activation = None
+            overwrite.speak = None
 
             overwrites[member] = overwrite
             untrusted.append(member.mention)
 
         view = "\n".join(untrusted) if untrusted else "No valid users were provided to untrust."
+
+        if untrusted:
+            await channel.edit(overwrites=overwrites)
         
-        await channel.edit(overwrites=overwrites)
         embed = discord.Embed(
             color=discord.Color.blurple()
             )
