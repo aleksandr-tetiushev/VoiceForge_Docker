@@ -1,34 +1,54 @@
-# 🎙️ VoiceForge v2.0
+# 🎙️ VoiceForge
 
 A self-hosted Discord bot for dynamic temporary voice channel management, featuring a fully interactive TempVoice-style dashboard.
 
-## ✨ What's New in v2.0
+---
 
+## 📦 Version History
+
+### v2.1 — Stability & Permission Fixes
+- 🔁 **On-start VC recovery** — If the bot was offline and users were already in the creator channel when it came back online, it now automatically creates voice channels for them
+- 🗑️ **Orphan channel cleanup** — Channels that exist in the category but have no ownership record in memory (e.g. after a bot restart) are automatically deleted by the 5-minute cleanup task
+- 🔒 **Permission overwrite fixes** — Fixed a bug where users couldn't chat in their own locked voice channel; owner and bot overwrites are now correctly applied during VC creation, claim, transfer, and panel button actions
+- ⏱️ **Per-channel cooldowns** — Cooldowns for panel buttons (rename, claim, transfer) now run per channel instead of globally, preventing cross-channel interference
+- ✅ **Trust/Untrust/Trusted sync** — Permission checking for slash commands is now consistent with panel button behaviour to avoid conflicts between the two
+- 🛡️ **Guild checks** — All server-only commands now properly validate that they're being run inside a server
+
+### v2.0 — Interactive Panel
 - 🎛️ **Interactive Panel** — TempVoice-style UI with buttons for all channel controls
 - 📨 **Native Member Search** — Discord's built-in member picker for invite, trust, and ban
 - 👑 **Smart Claim System** — Automatically handles ownership recovery
 - 🔒 **Panel sent directly into your temp VC** — No extra channels needed
 
+---
+
 ## ✨ Features
 
 - Auto-creates a personal voice channel when a user joins the designated **"Create VC"** channel
+- Automatically recovers and creates channels for users already in the creator channel on bot startup
 - Automatically deletes empty channels when everyone leaves
+- Automatically cleans up orphaned channels (no ownership record) every 5 minutes
 - Full ownership system with claim and transfer support
 - Rich set of slash commands for channel management
 - Interactive button panel sent directly into each created voice channel
 
+---
+
 ## 📁 Project Structure
+
 ```
 ├── main.py                  # Bot entry point and configuration
 ├── config.py                # Cooldown and limit constants
 ├── logger.py                # Error and info logging setup
 ├── cogs/
-│   ├── voice_manager.py     # Auto voice channel creation and deletion
+│   ├── voice_manager.py     # Auto voice channel creation, deletion, and cleanup
 │   ├── voice_interface.py   # Interactive panel UI (buttons, modals, selects)
 │   ├── voice_controls.py    # All slash commands for channel control
 │   ├── error_handling.py    # Global error handler
 │   └── sync_command.py      # Slash command sync and help utilities
 ```
+
+---
 
 ## ⚙️ Setup
 
@@ -58,6 +78,8 @@ SERVER_ID=your_server_id_here
 python main.py
 ```
 
+---
+
 ## 🔧 Discord Setup
 
 1. Create a **Category** where voice channels will be created
@@ -70,12 +92,14 @@ python main.py
    - `Connect`
    - `Send Messages`
 
+---
+
 ## 🎛️ Interactive Panel
 
 When a user joins the Create VC channel, a panel is automatically sent inside their new voice channel with the following buttons:
 
 | Button | Description |
-|---|---|
+|--------|-------------|
 | 🔒 Lock | Block others from joining |
 | 🔓 Unlock | Allow others to join |
 | 🙈 Hide | Hide from channel list |
@@ -94,23 +118,27 @@ When a user joins the Create VC channel, a panel is automatically sent inside th
 
 > All controls are owner-only except **Claim**.
 
-You can also manually send a panel to any channel using `/panel` (requires Manage Channels permission).
+You can also manually send a panel to any channel using `/panel` (requires `Manage Channels` permission).
+
+---
 
 ## 🛠️ Owner Commands (Prefix: `!`)
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `!syncguild` | Sync slash commands to the current server |
 | `!syncglobal` | Sync slash commands globally |
 | `!clearguild` | Clear all guild slash commands |
 | `!clearglobal` | Clear all global slash commands |
+
+---
 
 ## 📋 Slash Commands
 
 ### Channel Management
 
 | Command | Description | Cooldown |
-|---|---|---|
+|---------|-------------|----------|
 | `/rename <name>` | Rename your voice channel (max 32 characters) | 300s |
 | `/limit <number>` | Set user limit (1–99), or 0 to remove | 3s |
 | `/delete` | Delete your voice channel | 5s |
@@ -122,14 +150,14 @@ You can also manually send a panel to any channel using `/panel` (requires Manag
 ### Ownership
 
 | Command | Description | Cooldown |
-|---|---|---|
+|---------|-------------|----------|
 | `/claim` | Claim an unowned or abandoned channel | 90s |
 | `/transfer <member>` | Transfer ownership to another member | 90s |
 
 ### Member Control
 
 | Command | Description | Cooldown |
-|---|---|---|
+|---------|-------------|----------|
 | `/kick <members>` | Kick up to 5 members from your channel | 2s |
 | `/invite <members>` | Send a DM invite to up to 5 members | 5s |
 | `/trust <members>` | Allow up to 5 members to view/join even if locked or hidden | 4s |
@@ -142,8 +170,10 @@ You can also manually send a panel to any channel using `/panel` (requires Manag
 ### Help
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/help` | Shows all available slash commands |
+
+---
 
 ## 📝 Logs
 
@@ -151,12 +181,17 @@ Logs are stored in the `Logs/` directory:
 - `VOICE_BOT.log` — General bot activity
 - `error.log` — Unexpected errors with timestamps
 
+---
+
 ## 📌 Notes
 
 - All voice control commands only work inside channels created by this bot
 - Only the **channel owner** can use management commands
 - Channels are automatically deleted when they become empty
 - Ownership data is stored in-memory and resets on bot restart — use **Claim** to re-register
+- Orphaned channels (no owner record after restart) are cleaned up automatically within 5 minutes
+
+---
 
 ## 📜 License
 
