@@ -215,8 +215,3 @@ class VoiceManager(commands.Cog):
 # Setup function to load cog into the main module 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VoiceManager(bot))
-
-
-
-
-# permission management - not done
