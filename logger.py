@@ -20,8 +20,8 @@ error_logger.setLevel(logging.INFO)
 error_logger.propagate = False  # optional but recommended
 
 
-def log_error(message: str,exc_info=None) -> None:
-    error_logger.error(message,exc_info=exc_info)
+def log_error(message: str,exc_info:str|None="No Traceback") -> None:
+    error_logger.error(f"{message} - traceback : \n\n{exc_info}")
 
 
 def log_info(message: str) -> None:

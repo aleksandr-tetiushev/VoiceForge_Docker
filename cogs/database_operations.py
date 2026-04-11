@@ -4,6 +4,8 @@ import discord
 from pydantic import BaseModel, ConfigDict
 from dotenv import load_dotenv
 import os
+from logger import log_error , log_info
+import traceback
 
 load_dotenv()
 DB_NAME=os.getenv("DB_NAME") 
@@ -57,6 +59,9 @@ def init_database(db_name: str = DB_NAME) -> bool:
         return True
     
     except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : init_database - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     finally:
@@ -92,10 +97,96 @@ def write_server(server: Server,db_name: str = DB_NAME) -> bool:
         return True
     
     except sqlite3.IntegrityError as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : write_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : write_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
+    
+    finally:
+        if conn:
+            conn.close()
+
+def read_server(server_id: int,db_name: str = DB_NAME) -> Server | None:
+    """
+    READ: Fetch server data from database by server_id
+    
+    Args:
+        server_id: Discord guild ID
+        db_name: Database file name
+    
+    Returns:
+        Server object if found, None otherwise
+    """
+    
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT server_id, category_id, creator_channel_id
+            FROM servers
+            WHERE server_id = ?
+        """, (server_id,))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            server: Server = Server(**dict(row))
+            return server
+        else:
+            return None
+    
+    except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : read_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return None
+    
+    finally:
+        if conn:
+            conn.close()
+
+def read_all_servers(db_name: str = DB_NAME) -> list[Server|None]:
+    """
+    READ: Fetch all servers from database
+    
+    Args:
+        db_name: Database file name
+    
+    Returns:
+        List of Server objects
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT server_id, category_id, creator_channel_id
+            FROM servers
+        """)
+        
+        rows = cursor.fetchall()
+        servers: list[Server] = [Server(**dict(row)) for row in rows]
+        
+        return servers
+    
+    except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : read_all_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return []
     
     finally:
         if conn:
@@ -137,7 +228,13 @@ def get_server_object(interaction: discord.Interaction) -> Server | None:
         return server
     
     except AttributeError as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : get_server_object - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
     
     except Exception as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : get_server_object - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
