@@ -61,3 +61,45 @@ def init_database(db_name: str = DB_NAME) -> bool:
     
     finally:
         conn.close()
+
+
+def write_server(server: Server,db_name: str = DB_NAME) -> bool:
+    """
+    WRITE: Insert server data in database
+    
+    Args:
+        server: Server pydantic model instance
+        db_name: Database file name
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    # Validation
+    if not server.server_id or not server.creator_channel_id:
+        return False
+    
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO servers (server_id, category_id, creator_channel_id)
+            VALUES (?, ?, ?)
+        """, (server.server_id, server.category_id, server.creator_channel_id))
+        
+        conn.commit()
+        return True
+    
+    except sqlite3.IntegrityError as e:
+        return False
+    
+    except sqlite3.Error as e:
+        return False
+    
+    finally:
+        if conn:
+            conn.close()
+
+
+
