@@ -101,5 +101,43 @@ def write_server(server: Server,db_name: str = DB_NAME) -> bool:
         if conn:
             conn.close()
 
-
-
+def get_server_object(interaction: discord.Interaction) -> Server | None:
+    
+    """
+    Extracts data from Discord interaction and creates Server object
+    
+    Args:
+        interaction: Discord interaction received when command was executed
+    
+    Returns:
+        Server object if executed in voice channel, else None
+    
+    Raises:
+        None (returns None on error)
+    """
+    try:
+        # Extract IDs from interaction
+        server_id: int = interaction.guild_id
+        category_id: int | None = interaction.channel.category_id
+        creator_channel_id: int = interaction.channel_id
+        
+        # Validate guild and channel exist
+        if not interaction.guild or not interaction.channel:
+            return None
+        
+        # Check if channel is VoiceChannel
+        channel: discord.abc.GuildChannel | None = interaction.guild.get_channel(creator_channel_id)
+        
+        if not isinstance(channel, discord.VoiceChannel):
+            return None
+        
+        # Create and return Server object
+        server: Server = Server(server_id=server_id,category_id=category_id,creator_channel_id=creator_channel_id)
+        
+        return server
+    
+    except AttributeError as e:
+        return None
+    
+    except Exception as e:
+        return None
