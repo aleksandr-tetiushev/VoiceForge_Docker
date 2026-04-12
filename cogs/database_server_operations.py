@@ -65,7 +65,8 @@ def init_database(db_name: str = DB_NAME) -> bool:
         return False
     
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def write_server(server: Server,db_name: str = DB_NAME) -> bool:
