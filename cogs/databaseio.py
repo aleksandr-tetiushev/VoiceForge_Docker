@@ -21,3 +21,19 @@ def server_write(interaction:discord.Interaction)->bool:
         error_name = type(e).__name__
         log_error(message=f"Location : server_write - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
+
+def server_read(interaction:discord.Interaction)->tuple[Server|None,bool]:
+    try:
+        server_id:int = interaction.guild_id
+        server_object:Server | None = read_server(server_id)
+
+        if not isinstance(server_object,Server):
+            return None,False
+
+        return server_object, True
+    
+    except Exception as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : server_read - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return None,False
