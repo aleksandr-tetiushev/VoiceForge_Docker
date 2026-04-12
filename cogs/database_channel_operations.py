@@ -106,3 +106,47 @@ def channel_write(channel: Channel, db_name: str = DB_NAME) -> bool:
     finally:
         if conn:
             conn.close()
+
+def channel_read(server_id: int, channel_id: int, db_name: str = DB_NAME) -> Channel | None:
+    """
+    READ: Fetch channel data from database by server_id and channel_id
+    
+    Args:
+        server_id: Discord guild ID
+        channel_id: Discord channel ID
+        db_name: Database file name
+    
+    Returns:
+        Channel object if found, None otherwise
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        # Query by BOTH server_id AND channel_id
+        cursor.execute("""
+            SELECT server_id, owner_id, category_id, channel_id
+            FROM serversChannels
+            WHERE server_id = ? AND channel_id = ?
+        """, (server_id, channel_id))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            channel: Channel = Channel(**dict(row))
+            return channel
+        else:
+            return None
+
+    except sqlite3.Error as e:
+        exception_traceback: str = traceback.format_exc()
+        error_name: str = type(e).__name__
+        log_error(message=f"Location : channel_read - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return None
+    
+    finally:
+        if conn:
+            conn.close()
