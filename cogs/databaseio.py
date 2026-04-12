@@ -76,3 +76,29 @@ def server_edit(interaction:discord.Interaction,data:dict)->bool:
         error_name = type(e).__name__
         log_error(message=f"Location : server_edit - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
+    
+def server_delete(interaction:discord.Interaction)->bool:
+    """
+    Delete server configuration from database
+    
+    Args:
+        interaction: Discord interaction object
+    
+    Returns:
+        True if successfully deleted, False otherwise
+    """
+    try:
+        server_id:int = interaction.guild_id
+
+        delete_status:bool = delete_server(server_id=server_id)
+        
+        if not delete_status:
+            log_error(message=f"Location : server_delete - file : databaseio.py : Error Name - Database delete operation Failed.")
+        
+        return delete_status
+    
+    except Exception as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : server_delete - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return False
