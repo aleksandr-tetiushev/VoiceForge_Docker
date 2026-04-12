@@ -1,4 +1,4 @@
-from .database_operations import *
+from .database_server_operations import *
 import discord 
 
 

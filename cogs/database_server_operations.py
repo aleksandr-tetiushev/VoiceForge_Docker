@@ -8,7 +8,7 @@ from logger import log_error , log_info
 import traceback
 
 load_dotenv()
-DB_NAME=os.getenv("DB_NAME") 
+DB_NAME=os.getenv("SERVER_DB_NAME") 
 
 if not DB_NAME:
     DB_NAME = "discord_server.db"
@@ -61,7 +61,7 @@ def init_database(db_name: str = DB_NAME) -> bool:
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : init_database - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : init_database - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     finally:
@@ -99,13 +99,13 @@ def write_server(server: Server,db_name: str = DB_NAME) -> bool:
     except sqlite3.IntegrityError as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : write_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : write_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : write_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : write_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     finally:
@@ -148,7 +148,7 @@ def read_server(server_id: int,db_name: str = DB_NAME) -> Server | None:
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : read_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : read_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
     
     finally:
@@ -185,7 +185,7 @@ def read_all_servers(db_name: str = DB_NAME) -> list[Server]:
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : read_all_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : read_all_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return []
     
     finally:
@@ -228,7 +228,7 @@ def edit_server(server_id: int,updates: dict,db_name: str = DB_NAME) -> bool:
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : edit_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : edit_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
 
     finally:
@@ -263,7 +263,7 @@ def delete_server(server_id: int,db_name: str = DB_NAME) -> bool:
     except sqlite3.Error as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : delete_server - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : delete_server - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
     
     finally:
@@ -308,11 +308,11 @@ def get_server_object(interaction: discord.Interaction) -> Server | None:
     except AttributeError as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : get_server_object - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : get_server_object - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
     
     except Exception as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
-        log_error(message=f"Location : get_server_object - file : database_operation.py : Error Name - {error_name}",exc_info=exception_traceback)
+        log_error(message=f"Location : get_server_object - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
