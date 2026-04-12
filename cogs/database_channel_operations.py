@@ -69,3 +69,40 @@ def init_database(db_name: str = DB_NAME) -> bool:
     finally:
         if conn:
             conn.close()
+
+def channel_write(channel: Channel, db_name: str = DB_NAME) -> bool:
+    """
+    WRITE: Insert channel data in database
+    
+    Args:
+        channel: Channel pydantic model instance
+        db_name: Database file name
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not channel.server_id or not channel.channel_id or not channel.owner_id:
+        return False
+    
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO serversChannels (server_id, owner_id, category_id, channel_id)
+            VALUES (?, ?, ?, ?)
+        """, (channel.server_id, channel.owner_id, channel.category_id, channel.channel_id))
+        
+        conn.commit()
+        return True
+    
+    except sqlite3.Error as e:
+        exception_traceback: str = traceback.format_exc()
+        error_name: str = type(e).__name__
+        log_error(message=f"Location : channel_write - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return False
+    
+    finally:
+        if conn:
+            conn.close()
