@@ -6,3 +6,4 @@ venv/
 Logs/
 .vscode/
 known_bugs.py
+cogs/old_voice_manager.py
