@@ -151,6 +151,44 @@ def channel_read(server_id: int, channel_id: int, db_name: str = DB_NAME) -> Cha
         if conn:
             conn.close()
 
+def read_all_channels(db_name: str = DB_NAME) -> list[Channel]:
+    """
+    READ: Fetch all channel from database
+    
+    Args:
+        db_name: Database file name
+    
+    Returns:
+        List of Channel objects
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT server_id, owner_id, category_id, channel_id
+            FROM serversChannels
+        """)
+        
+        rows = cursor.fetchall()
+        channels: list[Channel] = [Channel(**dict(row)) for row in rows]
+        
+        return channels
+    
+    except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(message=f"Location : read_all_channels - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return []
+    
+    finally:
+        if conn:
+            conn.close()
+
+
 def channel_edit(server_id: int,channel_id: int,new_owner_id: int,db_name: str = DB_NAME) -> bool:
     """
     EDIT: Update channel owner in database
