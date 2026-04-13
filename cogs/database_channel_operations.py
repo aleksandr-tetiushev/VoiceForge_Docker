@@ -49,7 +49,7 @@ def init_database(db_name: str = DB_NAME) -> bool:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS serversChannels (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                server_id INTEGER UNIQUE NOT NULL,
+                server_id INTEGER NOT NULL,
                 owner_id INTEGER NOT NULL,
                 category_id INTEGER NOT NULL,
                 channel_id INTEGER UNIQUE NOT NULL,
