@@ -150,3 +150,47 @@ def channel_read(server_id: int, channel_id: int, db_name: str = DB_NAME) -> Cha
     finally:
         if conn:
             conn.close()
+
+def channel_edit(server_id: int,channel_id: int,new_owner_id: int,db_name: str = DB_NAME) -> bool:
+    """
+    EDIT: Update channel owner in database
+    
+    Args:
+        server_id: Discord guild ID
+        channel_id: Discord channel ID
+        new_owner_id: New owner ID to set
+        db_name: Database file name
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        # Update owner_id where server_id AND channel_id match
+        query: str = """
+            UPDATE serversChannels 
+            SET owner_id = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE server_id = ? AND channel_id = ?
+        """
+        
+        values: tuple = (new_owner_id, server_id, channel_id)
+        
+        cursor.execute(query, values)
+        conn.commit()
+        
+        # Return True if any rows were updated
+        return cursor.rowcount > 0
+    
+    except sqlite3.Error as e:
+        exception_traceback: str = traceback.format_exc()
+        error_name: str = type(e).__name__
+        log_error(message=f"Location : channel_edit - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return False
+
+    finally:
+        if conn:
+            conn.close()
