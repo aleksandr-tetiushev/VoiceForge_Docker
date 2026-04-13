@@ -68,4 +68,15 @@ class VoiceManager(commands.Cog):
                 log_error(message=f"Location : clean_voice_channels - file : voice_manager.py : Error Name - {error_name}",exc_info=exception_traceback)
                 continue
 
+    async def get_creator_channel(self, server: server_db.Server) -> discord.VoiceChannel | None:
+        creator_channel_id = server.creator_channel_id
     
+        creator_channel = self.bot.get_channel(creator_channel_id)
+    
+        if not creator_channel:
+            try:
+                creator_channel = await self.bot.fetch_channel(creator_channel_id)
+            except discord.NotFound:
+                return None
+    
+        return creator_channel if isinstance(creator_channel, discord.VoiceChannel) else None
