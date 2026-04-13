@@ -1,6 +1,7 @@
-from .database_server_operations import *
+from . import database_server_operations as db_server
 import discord 
-
+from logger import log_error , log_info
+import traceback
 
 def validate_data_dict(data: dict) -> bool:
     """Validate data dictionary has only allowed keys and isn't empty"""
@@ -21,12 +22,12 @@ def validate_data_dict(data: dict) -> bool:
 
 def server_write(interaction:discord.Interaction)->bool:
     try:
-        server:Server | None = get_server_object(interaction=interaction)
+        server:db_server.Server | None = db_server.get_server_object(interaction=interaction)
 
-        if not isinstance(server,Server):
+        if not isinstance(server,db_server.Server):
             return False
 
-        write_status = write_server(server)
+        write_status = db_server.write_server(server)
         
         if not write_status:
             log_error(message=f"Location : server_write - file : databaseio.py : Error Name - Database write operation Failed.")
@@ -39,12 +40,12 @@ def server_write(interaction:discord.Interaction)->bool:
         log_error(message=f"Location : server_write - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
 
-def server_read(interaction:discord.Interaction)->tuple[Server|None,bool]:
+def server_read(interaction:discord.Interaction)->tuple[db_server.Server|None,bool]:
     try:
         server_id:int = interaction.guild_id
-        server_object:Server | None = read_server(server_id)
+        server_object:db_server.Server | None = db_server.read_server(server_id)
 
-        if not isinstance(server_object,Server):
+        if not isinstance(server_object,db_server.Server):
             log_error(message=f"Location : server_read - file : databaseio.py : Error Name - Database read operation Failed.")
             return None,False
 
@@ -63,7 +64,7 @@ def server_edit(interaction:discord.Interaction,data:dict)->bool:
         if not validate_data_dict(data=data):
             return False
         
-        edit_status:bool = edit_server(server_id=server_id,updates=data)
+        edit_status:bool = db_server.edit_server(server_id=server_id,updates=data)
 
         if not edit_status:
             log_error(message=f"Location : server_edit - file : databaseio.py : Error Name - Database edit operation Failed.")
@@ -90,7 +91,7 @@ def server_delete(interaction:discord.Interaction)->bool:
     try:
         server_id:int = interaction.guild_id
 
-        delete_status:bool = delete_server(server_id=server_id)
+        delete_status:bool = db_server.delete_server(server_id=server_id)
         
         if not delete_status:
             log_error(message=f"Location : server_delete - file : databaseio.py : Error Name - Database delete operation Failed.")
