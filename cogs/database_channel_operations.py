@@ -194,3 +194,37 @@ def channel_edit(server_id: int,channel_id: int,new_owner_id: int,db_name: str =
     finally:
         if conn:
             conn.close()
+
+def channel_delete(server_id: int,channel_id: int,db_name: str = DB_NAME) -> bool:
+    """
+    DELETE: Remove channel from database
+    
+    Args:
+        server_id: Discord guild ID
+        channel_id: Discord channel ID
+        db_name: Database file name
+    
+    Returns:
+        True if successfully deleted, False otherwise
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        # Delete channel where both server_id AND channel_id match
+        cursor.execute("DELETE FROM serversChannels WHERE server_id = ? AND channel_id = ?",(server_id, channel_id))
+        conn.commit()
+        
+        return cursor.rowcount > 0
+    
+    except sqlite3.Error as e:
+        exception_traceback: str = traceback.format_exc()
+        error_name: str = type(e).__name__
+        log_error(message=f"Location : channel_delete - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return False
+    
+    finally:
+        if conn:
+            conn.close()
