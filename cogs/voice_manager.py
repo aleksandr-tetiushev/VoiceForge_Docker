@@ -12,7 +12,10 @@ import traceback
 class VoiceManager(commands.Cog):
     def __init__(self,bot:commands.Bot) -> None:
         self.bot:commands.Bot = bot
-
+        # server_id -> creator_channel_id
+        self.creator_channels:dict[int,int] = {}
+        # server_id -> category_id
+        self.temp_channel_category:dict[int,int] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -80,3 +83,87 @@ class VoiceManager(commands.Cog):
                 return None
     
         return creator_channel if isinstance(creator_channel, discord.VoiceChannel) else None
+    
+    async def create_temp_voice_channel(self, member: discord.Member) -> bool:
+        try:
+            guild: discord.Guild = member.guild
+
+            category_id = self.temp_channel_category.get(guild.id)
+            if not category_id:
+                return False
+
+            category = guild.get_channel(category_id)
+
+            if not category:
+                try:
+                    category = await self.bot.fetch_channel(category_id)
+                except discord.NotFound:
+                    return False
+
+            if not isinstance(category, discord.CategoryChannel):
+                return False
+
+            overwrites = {
+                member: discord.PermissionOverwrite(
+                    connect=True,
+                    read_message_history=True,
+                    speak=True,
+                    stream=True,
+                    use_voice_activation=True,
+                    view_channel=True,
+                    send_messages=True
+                ),
+                self.bot.user: discord.PermissionOverwrite(
+                    read_message_history=True,
+                    send_messages=True,
+                    connect=True,
+                    view_channel=True,
+                    embed_links=True
+                )
+            }
+
+            new_channel: discord.VoiceChannel = await guild.create_voice_channel(
+                name=f"{member.display_name}'s VC",
+                category=category,
+                user_limit=4,
+                overwrites=overwrites
+            )
+
+            channel_object = channel_db.Channel(
+                server_id=guild.id,
+                owner_id=member.id,
+                category=category.id,
+                channel_id=new_channel.id
+            )
+
+            write_status = channel_db.channel_write(channel=channel_object)
+
+            if not write_status:
+                log_error(message="Location : create_temp_voice_channel - DB write failed")
+                await new_channel.delete(reason="Internal Server error")
+                return False
+
+            try:
+                await new_channel.send(
+                    content=f"Welcome {member.mention} ❤️\n\n",
+                    embed=build_panel_embed(),
+                    view=VoicePanelView()
+                )
+            except discord.Forbidden: # DM Closed
+                pass
+
+            try:
+                await member.move_to(channel=new_channel)
+            except discord.HTTPException:
+                log_error(message="Location : create_temp_voice_channel - move_to failed")
+                
+            return True
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(
+                message=f"Location : create_temp_voice_channel - file : voice_manager.py : Error Name - {error_name}",
+                exc_info=exception_traceback
+            )
+            return False
