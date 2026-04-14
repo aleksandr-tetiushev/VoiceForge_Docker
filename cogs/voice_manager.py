@@ -156,7 +156,7 @@ class VoiceManager(commands.Cog):
                 await member.move_to(channel=new_channel)
             except discord.HTTPException:
                 log_error(message="Location : create_temp_voice_channel - move_to failed")
-                
+
             return True
 
         except Exception as e:
@@ -167,3 +167,26 @@ class VoiceManager(commands.Cog):
                 exc_info=exception_traceback
             )
             return False
+        
+    def get_all_server_data(self):
+       servers: list[server_db.Server] = server_db.read_all_servers()
+    
+       for server in servers:
+           try:
+               if not server.server_id:
+                   continue
+                
+               if server.creator_channel_id:
+                   self.creator_channels[server.server_id] = server.creator_channel_id
+    
+               if server.category_id:
+                   self.temp_channel_category[server.server_id] = server.category_id
+    
+           except Exception as e:
+               exception_traceback = traceback.format_exc()
+               error_name = type(e).__name__
+               log_error(
+                   message=f"Location : get_all_server_data - file : voice_manager.py : Error Name - {error_name}",
+                   exc_info=exception_traceback
+               )
+               continue
