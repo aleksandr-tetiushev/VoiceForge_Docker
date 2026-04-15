@@ -22,12 +22,13 @@ class VoiceManager(commands.Cog):
         # initialize databases on every ready to keep database avaliable if deleted
         channel_db.init_database()
         server_db.init_database()
+        # create voice channel for users already in creator channel when bot was not ready/online
+        await self.on_start_voice_channel_creation()
         # clean all temp channels and its data stored in DB
         await self.clean_voice_channels()
         # load server cache data for server and category and creator_channel
         self.load_server_cache()
-        # create voice channel for users already in creator channel when bot was not ready/online
-        await self.on_start_voice_channel_creation()
+        
 
     async def clean_voice_channels(self):
         channels = channel_db.read_all_channels()
@@ -269,3 +270,17 @@ class VoiceManager(commands.Cog):
                         channel_id=before.channel.id
                     )
                     await before.channel.delete()
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        if not isinstance(channel,discord.VoiceChannel):
+            return 
+        
+        if channel.category_id != self.temp_channel_category.get(channel.guild.id):
+            return
+        
+        delete_status = channel_db.channel_delete(server_id=channel.guild.id,channel_id=channel.id)
+
+        if not delete_status:
+            log_info(message=f"Channel delete event: no DB entry found for channel_id={channel.id}")
+            
