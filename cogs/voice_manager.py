@@ -229,3 +229,43 @@ class VoiceManager(commands.Cog):
             error_name = type(e).__name__
             log_error(message=f"Location : on_start_voice_channel_creation - Error Name - {error_name}",exc_info=exception_traceback)
             return False
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+        if member.bot:
+            return
+
+        if before.channel == after.channel:
+            return
+
+        # only trigger when user joins creator channel
+        if not after.channel or after.channel.id not in self.creator_channels.values():
+            return
+
+        guild: discord.Guild = member.guild
+
+        vc_status = await self.create_temp_voice_channel(member=member)
+
+        # optional safety
+        if not vc_status:
+            return
+
+        # cleanup previous channel if empty
+        if before.channel:
+
+            # Only handle temp category channels
+            if before.channel.category_id != self.temp_channel_category.get(guild.id):
+                return
+
+            channel_object = channel_db.channel_read(
+                server_id=guild.id,
+                channel_id=before.channel.id
+            )
+
+            if isinstance(channel_object, channel_db.Channel):
+                if len(before.channel.members) == 0:
+                    channel_db.channel_delete(
+                        server_id=guild.id,
+                        channel_id=before.channel.id
+                    )
+                    await before.channel.delete()
