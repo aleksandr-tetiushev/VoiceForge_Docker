@@ -19,16 +19,12 @@ class VoiceManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        # initialize databases on every ready to keep database avaliable if deleted
         channel_db.init_database()
         server_db.init_database()
-        # create voice channel for users already in creator channel when bot was not ready/online
-        await self.on_start_voice_channel_creation()
-        # clean all temp channels and its data stored in DB
-        await self.clean_voice_channels()
-        # load server cache data for server and category and creator_channel
         self.load_server_cache()
-        
+        await self.on_start_voice_channel_creation()
+        await self.clean_voice_channels()
+
 
     async def clean_voice_channels(self):
         channels = channel_db.read_all_channels()
@@ -159,8 +155,12 @@ class VoiceManager(commands.Cog):
 
             try:
                 await member.move_to(channel=new_channel)
+            
             except discord.HTTPException:
                 log_error(message="Location : create_temp_voice_channel - move_to failed")
+                await new_channel.delete(reason="Move failed")
+                channel_db.channel_delete(server_id=new_channel.guild.id,channel_id=new_channel.id)
+                return False
 
             return True
 
@@ -174,27 +174,29 @@ class VoiceManager(commands.Cog):
             return False
         
     def load_server_cache(self):
-       servers: list[server_db.Server] = server_db.read_all_servers()
+        self.creator_channels.clear()
+        self.temp_channel_category.clear()
+        servers: list[server_db.Server] = server_db.read_all_servers()
 
-       for server in servers:
-           try:
-               if not server.server_id:
-                   continue
+        for server in servers:
+            try:
+                if not server.server_id:
+                    continue
+                
+                if server.creator_channel_id:
+                    self.creator_channels[server.server_id] = server.creator_channel_id
 
-               if server.creator_channel_id:
-                   self.creator_channels[server.server_id] = server.creator_channel_id
+                if server.category_id:
+                    self.temp_channel_category[server.server_id] = server.category_id
 
-               if server.category_id:
-                   self.temp_channel_category[server.server_id] = server.category_id
-
-           except Exception as e:
-               exception_traceback = traceback.format_exc()
-               error_name = type(e).__name__
-               log_error(
-                   message=f"Location : get_all_server_data - file : voice_manager.py : Error Name - {error_name}",
-                   exc_info=exception_traceback
-               )
-               continue
+            except Exception as e:
+                exception_traceback = traceback.format_exc()
+                error_name = type(e).__name__
+                log_error(
+                    message=f"Location : get_all_server_data - file : voice_manager.py : Error Name - {error_name}",
+                    exc_info=exception_traceback
+                )
+                continue
            
     async def on_start_voice_channel_creation(self) -> bool:
         try:
@@ -284,3 +286,6 @@ class VoiceManager(commands.Cog):
         if not delete_status:
             log_info(message=f"Channel delete event: no DB entry found for channel_id={channel.id}")
             
+# Setup function to load cog into the main module 
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(VoiceManager(bot))
