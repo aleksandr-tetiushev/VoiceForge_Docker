@@ -40,22 +40,21 @@ def server_write(interaction:discord.Interaction)->bool:
         log_error(message=f"Location : server_write - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
         return False
 
-def server_read(interaction:discord.Interaction)->tuple[db_server.Server|None,bool]:
+def server_read(interaction: discord.Interaction) -> tuple[db_server.Server | None, bool]:
     try:
-        server_id:int = interaction.guild_id
-        server_object:db_server.Server | None = db_server.read_server(server_id)
+        server_id: int = interaction.guild_id
+        server_object: db_server.Server | None = db_server.read_server(server_id)
 
-        if not isinstance(server_object,db_server.Server):
-            log_error(message=f"Location : server_read - file : databaseio.py : Error Name - Database read operation Failed.")
-            return None,False
+        if server_object is None:
+            return None, False
 
         return server_object, True
-    
+
     except Exception as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
         log_error(message=f"Location : server_read - file : databaseio.py : Error Name - {error_name}",exc_info=exception_traceback)
-        return None,False
+        return None, False
     
 def server_edit(interaction:discord.Interaction,data:dict)->bool:
     try:

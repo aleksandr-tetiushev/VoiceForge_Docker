@@ -7,3 +7,5 @@ Logs/
 .vscode/
 known_bugs.py
 cogs/old_voice_manager.py
+discord_server.db
+discord_channel.db
