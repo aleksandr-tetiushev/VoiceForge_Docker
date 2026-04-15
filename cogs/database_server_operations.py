@@ -271,47 +271,41 @@ def delete_server(server_id: int,db_name: str = DB_NAME) -> bool:
         if conn:
             conn.close()
 
-def get_server_object(interaction: discord.Interaction) -> Server | None:
-    
+def get_server_object(channel: discord.VoiceChannel) -> Server | None:
     """
-    Extracts data from Discord interaction and creates Server object
-    
+    Extracts server configuration data from a Discord VoiceChannel object.
+
+    This function builds a Server model using the provided VoiceChannel,
+    removing dependency on Interaction context.
+
     Args:
-        interaction: Discord interaction received when command was executed
-    
+        channel (discord.VoiceChannel): The voice channel used as the creator channel.
+
     Returns:
-        Server object if executed in voice channel, else None
-    
-    Raises:
-        None (returns None on error)
+        db_server.Server | None:
+            Server object containing server_id, category_id, and creator_channel_id
+            if valid data is present, otherwise None.
+
+    Notes:
+        - Requires channel to belong to a guild.
+        - Requires channel to have a valid category.
+        - Used as a base builder for server registration flow.
     """
     try:
-        # Extract IDs from interaction
-        server_id: int = interaction.guild_id
-        category_id: int | None = interaction.channel.category_id
-        creator_channel_id: int = interaction.channel_id
-        
-        # Validate guild and channel exist
-        if not interaction.guild or not interaction.channel:
+        guild = channel.guild
+
+        if not guild:
             return None
-        
-        # Check if channel is VoiceChannel
-        channel: discord.abc.GuildChannel | None = interaction.guild.get_channel(creator_channel_id)
-        
-        if not isinstance(channel, discord.VoiceChannel):
+
+        server_id = guild.id
+        category_id = channel.category_id
+        creator_channel_id = channel.id
+
+        if not category_id:
             return None
-        
-        # Create and return Server object
-        server: Server = Server(server_id=server_id,category_id=category_id,creator_channel_id=creator_channel_id)
-        
-        return server
-    
-    except AttributeError as e:
-        exception_traceback = traceback.format_exc()
-        error_name = type(e).__name__
-        log_error(message=f"Location : get_server_object - file : database_server_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
-        return None
-    
+
+        return Server(server_id=server_id,category_id=category_id,creator_channel_id=creator_channel_id)
+
     except Exception as e:
         exception_traceback = traceback.format_exc()
         error_name = type(e).__name__
