@@ -26,6 +26,8 @@ class VoiceManager(commands.Cog):
         await self.clean_voice_channels()
         # load server cache data for server and category and creator_channel
         self.load_server_cache()
+        # create voice channel for users already in creator channel when bot was not ready/online
+        await self.on_start_voice_channel_creation()
 
     async def clean_voice_channels(self):
         channels = channel_db.read_all_channels()
@@ -192,3 +194,38 @@ class VoiceManager(commands.Cog):
                    exc_info=exception_traceback
                )
                continue
+           
+    async def on_start_voice_channel_creation(self) -> bool:
+        try:
+            servers: list[server_db.Server] = server_db.read_all_servers() # fetch all server object from database
+
+            for server in servers:
+                try:
+                    creator_channel = await self.get_creator_channel(server=server) # get creator channel for server
+
+                    if not isinstance(creator_channel, discord.VoiceChannel): # log if channel not found
+                        log_error(message=f"Location : on_start_voice_channel_creation - creator_channel_fetch_error - server_id : {server.server_id}")
+                        continue
+
+                    if not creator_channel.members: # prevent if no member in channel
+                        continue
+
+                    for member in creator_channel.members:
+                        if member.bot:# prevent bot's temp channel
+                            continue
+
+                        await self.create_temp_voice_channel(member=member) # create temp channel
+
+                except Exception as e:
+                    exception_traceback = traceback.format_exc()
+                    error_name = type(e).__name__
+                    log_error(message=f"Location : on_start_voice_channel_creation - creator channel loop - Error Name - {error_name}",exc_info=exception_traceback)
+                    continue
+
+            return True
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : on_start_voice_channel_creation - Error Name - {error_name}",exc_info=exception_traceback)
+            return False
