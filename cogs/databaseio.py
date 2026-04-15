@@ -20,19 +20,33 @@ def validate_data_dict(data: dict) -> bool:
     
     return True
 
-def server_write(interaction:discord.Interaction)->bool:
-    try:
-        server:db_server.Server | None = db_server.get_server_object(interaction=interaction)
+def server_write(channel: discord.VoiceChannel) -> bool:
+    """
+    Writes server configuration into the database using a VoiceChannel.
 
-        if not isinstance(server,db_server.Server):
+    This function converts the given VoiceChannel into a Server object
+    and persists it in the database.
+
+    Args:
+        channel (discord.VoiceChannel): Creator voice channel used for registration.
+
+    Returns:
+        bool:
+            True if server was successfully written to database,
+            False if validation fails or database operation fails.
+
+    Notes:
+        - Internally calls get_server_object() to build Server model.
+        - Logs database or runtime errors via logging system.
+        - Returns False for both validation failure and DB failure cases.
+    """
+    try:
+        server: db_server.Server | None = db_server.get_server_object(channel=channel)
+
+        if server is None:
             return False
 
-        write_status = db_server.write_server(server)
-        
-        if not write_status:
-            log_error(message=f"Location : server_write - file : databaseio.py : Error Name - Database write operation Failed.")
-
-        return write_status
+        return db_server.write_server(server)
 
     except Exception as e:
         exception_traceback = traceback.format_exc()
