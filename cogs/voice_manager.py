@@ -133,7 +133,7 @@ class VoiceManager(commands.Cog):
             channel_object = channel_db.Channel(
                 server_id=guild.id,
                 owner_id=member.id,
-                category=category.id,
+                category_id=category.id,
                 channel_id=new_channel.id
             )
 
@@ -234,44 +234,56 @@ class VoiceManager(commands.Cog):
             return False
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+    async def on_voice_state_update(self,member: discord.Member,before: discord.VoiceState,after: discord.VoiceState) -> None:
+
         if member.bot:
             return
 
         if before.channel == after.channel:
             return
 
-        # only trigger when user joins creator channel
-        if not after.channel or after.channel.id not in self.creator_channels.values():
-            return
-
         guild: discord.Guild = member.guild
 
-        vc_status = await self.create_temp_voice_channel(member=member)
+        # JOIN CREATOR CHANNEL → CREATE TEMP VC
+        if after.channel and after.channel.id in self.creator_channels.values():
 
-        # optional safety
-        if not vc_status:
-            return
+            vc_status = await self.create_temp_voice_channel(member=member)
 
-        # cleanup previous channel if empty
-        if before.channel:
-
-            # Only handle temp category channels
-            if before.channel.category_id != self.temp_channel_category.get(guild.id):
+            # optional safety
+            if not vc_status:
                 return
 
-            channel_object = channel_db.channel_read(
-                server_id=guild.id,
-                channel_id=before.channel.id
-            )
+        # CLEANUP TEMP CHANNEL ON LEAVE / MOVE
+        if before.channel:
 
-            if isinstance(channel_object, channel_db.Channel):
-                if len(before.channel.members) == 0:
-                    channel_db.channel_delete(
-                        server_id=guild.id,
-                        channel_id=before.channel.id
-                    )
-                    await before.channel.delete()
+            creator_id = self.creator_channels.get(guild.id)
+            temp_category_id = self.temp_channel_category.get(guild.id)
+
+            if not temp_category_id:
+                return
+
+            if before.channel.category_id != temp_category_id:
+                return
+
+            if before.channel.id == creator_id: # prevent deleting creator channel
+                return 
+            
+            
+
+            # if channel exists in DB OR even if it doesn't, we still check emptiness
+            if len([m for m in before.channel.members if not m.bot]) == 0:
+
+                # delete DB entry first
+                channel_db.channel_delete(
+                    server_id=guild.id,
+                    channel_id=before.channel.id
+                )
+
+                # delete Discord channel safely
+                try:
+                    await before.channel.delete(reason="Temp Channel Empty")
+                except discord.NotFound:
+                    pass
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:

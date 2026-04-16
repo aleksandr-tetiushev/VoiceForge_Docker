@@ -5,6 +5,9 @@ from cogs.voice_manager import VoiceManager
 from typing import Optional
 from config import * 
 import asyncio
+from . import databaseio as DB_SERVER_IO
+from logger import log_error , log_info
+import traceback
 
 # all voice control commands
 class VoiceControls(commands.Cog):
@@ -924,6 +927,57 @@ class VoiceControls(commands.Cog):
         await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
         return
     
+    @app_commands.command(name="register",description="Registers voice channel and its category as creator channel and its category for temp channels.")
+    async def register(self,interaction: discord.Interaction, channel: discord.VoiceChannel = None):
+        try:
+            if not self.is_guild(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+            await interaction.response.defer()
+            
+            if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
+                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                return
+            
+            if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
+                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                return
+    
+            if not channel or not isinstance(channel,discord.VoiceChannel):
+                await self.send(interaction=interaction,msg=f"❌ Channel Invalid please pass a valid Voice Channel",ephemeral=False)
+                return
+            
+            if not channel.category: # fallback on no category
+                await self.send(interaction=interaction,msg=f"❌ This channel does not have any cateogry please pass channel with a valid category",ephemeral=False)
+                return
+    
+            server_object , read_status = DB_SERVER_IO.server_read(interaction=interaction)
+    
+            if read_status: # fallback on already registered
+                await self.send(interaction=interaction,msg=f"❌ This server already have registred creator channel please unregister that first using `/unregister`.")
+                return
+            
+            write_status = DB_SERVER_IO.server_write(channel=channel)
+    
+            if not write_status:
+                await self.send(interaction=interaction,msg=f"❌ Failed To register channel please retry.",ephemeral=False)
+                return
+            
+            voice_manager = self.get_voice_manager()
+            if not isinstance(voice_manager,VoiceManager):
+                DB_SERVER_IO.server_delete(interaction=interaction) # remove server entry
+                await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.",ephemeral=False)
+                return 
+            
+            voice_manager.load_server_cache() # load current entry into voice_manager in-memory cache to start listening that channel also 
+            await self.send(interaction=interaction,msg=f"✅ Channel registred successfully.",ephemeral=False)
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : register , filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            return 
+
+
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
     await bot.add_cog(VoiceControls(bot))
