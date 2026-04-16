@@ -257,18 +257,15 @@ class VoiceManager(commands.Cog):
         if before.channel:
 
             creator_id = self.creator_channels.get(guild.id)
-            temp_category_id = self.temp_channel_category.get(guild.id)
-
-            if not temp_category_id:
-                return
-
-            if before.channel.category_id != temp_category_id:
-                return
 
             if before.channel.id == creator_id: # prevent deleting creator channel
                 return 
             
-            
+            channel_object = channel_db.channel_read(server_id=guild.id,channel_id=before.channel.id)
+
+            # return if the database doesnt have record of channel instead of checking in memory data to prevent stopped tracking in case of server config unregistration
+            if not isinstance(channel_object,channel_db.Channel):
+                return
 
             # if channel exists in DB OR even if it doesn't, we still check emptiness
             if len([m for m in before.channel.members if not m.bot]) == 0:
