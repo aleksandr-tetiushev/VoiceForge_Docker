@@ -82,7 +82,7 @@ def channel_write(channel: Channel, db_name: str = DB_NAME) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    if not channel.server_id or not channel.channel_id or not channel.owner_id or not channel.category_id:
+    if None in (channel.server_id, channel.channel_id, channel.owner_id, channel.category_id):
         return False
     
     conn: sqlite3.Connection | None = None
@@ -220,7 +220,11 @@ def get_last_channel_creation_delta(server_id: int, user_id: int, db_name: str =
         if not row or not row["created_at"]:
             return None
 
-        created_at = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        created_at = datetime.fromisoformat(row["created_at"])
+
+        # Ensure timezone consistency
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)
 
         return now - created_at

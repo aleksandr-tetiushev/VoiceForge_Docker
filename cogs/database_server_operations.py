@@ -41,6 +41,7 @@ def init_database(db_name: str = DB_NAME) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
+    conn: sqlite3.Connection | None = None
     try:
         conn: sqlite3.Connection = sqlite3.connect(db_name)
         cursor: sqlite3.Cursor = conn.cursor()
@@ -81,7 +82,7 @@ def write_server(server: Server,db_name: str = DB_NAME) -> bool:
         bool: True if successful, False otherwise
     """
     # Validation
-    if not server.server_id or not server.creator_channel_id or not server.category_id:
+    if None in (server.server_id, server.creator_channel_id,server.category_id):
         return False
     
     conn: sqlite3.Connection | None = None
