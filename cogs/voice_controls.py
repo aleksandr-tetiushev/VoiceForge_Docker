@@ -18,7 +18,7 @@ class VoiceControls(commands.Cog):
     def is_guild(self,interaction: discord.Interaction) -> bool:
         return isinstance(interaction.guild, discord.Guild)
     
-    async def verify_ownership(self,interaction:discord.Interaction)-> bool: # verifying ownership 
+    def verify_ownership(self,interaction:discord.Interaction)-> bool: # verifying ownership 
         if not interaction.guild_id:
             return False
     
@@ -61,7 +61,7 @@ class VoiceControls(commands.Cog):
     @app_commands.checks.cooldown(1, RENAME_COOLDOWN)
     async def rename(self, interaction: discord.Interaction, name: str):
         if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            await interaction.response.send_message("❌ This command works in servers only.",ephemeral=True)
             return
         if not self.user_in_voice_channel_check(interaction):
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
@@ -73,14 +73,13 @@ class VoiceControls(commands.Cog):
             return
         
         if len(name) > MAX_RENAME_CHARACTER_LIMIT:
-            await self.send(interaction=interaction,msg="❌ Channel names cannot exceed 32 characters.")
+            await self.send(interaction=interaction,msg=f"❌ Channel names cannot exceed {MAX_RENAME_CHARACTER_LIMIT} characters.")
             return
 
         channel = interaction.user.voice.channel 
         
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
-
-        if not await self.verify_ownership(voice_manager,interaction):
+        if not self.verify_ownership(interaction=interaction):
+            await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
             return
         
         if channel.name == name:
