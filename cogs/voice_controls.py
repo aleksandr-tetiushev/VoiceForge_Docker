@@ -352,37 +352,52 @@ class VoiceControls(commands.Cog):
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
-            log_error(message=f"Location : kick - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            log_error(message=f"Location : lock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
             await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
     
     @app_commands.command(name="unlock",description="Unlock current voice channel")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def unlock(self,interaction:discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel 
+            everyone = interaction.guild.default_role
+            overwrite = channel.overwrites_for(everyone)
+
+            if overwrite.connect is True: # verifying if voice channel isnt unlocked already to avoid unnecessary api calls
+                await self.send(interaction, "Voice channel is already unlocked.")
+                return        
+
+            overwrite.connect = True
+            await channel.set_permissions(everyone, overwrite=overwrite)
+            await self.send(interaction, "🔓 Voice channel unlocked.")
             return
         
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
-
-        if not await self.verify_ownership(voice_manager,interaction):
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unlock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-        channel = interaction.user.voice.channel 
-        everyone = interaction.guild.default_role
-        overwrite = channel.overwrites_for(everyone)
-
-        if overwrite.connect is True: # verifying if voice channel isnt unlocked already to avoid unnecessary api calls
-            await self.send(interaction, "Voice channel is already unlocked.")
-            return        
-        
-        overwrite.connect = True
-        await channel.set_permissions(everyone, overwrite=overwrite)
-        await self.send(interaction, "🔓 Voice channel unlocked.")
-        return
     
     @app_commands.command(name="delete",description="Delete current voice channel")
     @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
