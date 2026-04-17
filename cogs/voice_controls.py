@@ -19,6 +19,9 @@ class VoiceControls(commands.Cog):
         return isinstance(interaction.guild, discord.Guild)
     
     async def verify_ownership(self,interaction:discord.Interaction)-> bool: # verifying ownership 
+        if not interaction.guild_id:
+            return False
+    
         if not self.user_in_voice_channel_check(interaction): # main command handles the user in voice but still to prevent crashes we check user's voice status
             return False
 
@@ -32,12 +35,11 @@ class VoiceControls(commands.Cog):
         
         return False
 
-
     def user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
         return bool(interaction.user.voice and interaction.user.voice.channel)
     
-    def user_in_same_voice_channel(self,interaction:discord.Interaction,member:discord.Member) -> bool: # make sure the member is in same voice channel
-        return member.voice and member.voice.channel == interaction.user.voice.channel
+    def user_in_same_voice_channel(self, interaction: discord.Interaction, member: discord.Member) -> bool:
+        return (member.voice and interaction.user.voice and member.voice.channel == interaction.user.voice.channel)
         
     async def send(self,interaction:discord.Interaction, msg:str , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
         if interaction.response.is_done():
