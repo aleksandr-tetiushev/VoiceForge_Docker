@@ -615,121 +615,151 @@ class VoiceControls(commands.Cog):
         member4: discord.Member | None = None,
         member5: discord.Member | None = None
         ):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        overwrites = channel.overwrites
-
-        members = {member1, member2, member3, member4, member5}
-        members.discard(None)
-        trusted = []
-
-        for member in members:
-
-            if member.bot:
-                continue
-
-            if member.id == interaction.user.id:
-                continue
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if (overwrite.connect is True and 
-                overwrite.speak is True and 
-                overwrite.stream is True and 
-                overwrite.use_voice_activation is True and 
-                overwrite.view_channel is True
-                ): # preventing unnecessary overwrites
-                 continue
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-            overwrite.view_channel = True
-            overwrite.connect = True
-            overwrite.stream = True
-            overwrite.use_voice_activation = True
-            overwrite.speak = True
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-            overwrites[member] = overwrite
-            trusted.append(member.mention)
-        
-        view = "\n".join(trusted) if trusted else "No valid users were provided to trust."
-        
-        if trusted:
-            await channel.edit(overwrites=overwrites)
-            
-        embed = discord.Embed(
-            color=discord.Color.blurple()
-            )
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        embed.add_field(
-            name="✅ Trusted :",
-            value=view,
-            inline=False
-        )
-        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
-    
-    @app_commands.command(name="trusted",description="Shows trusted users.")
-    @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
-    async def trusted(self,interaction:discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
 
-        voice_manager = self.get_voice_manager()
+            channel = interaction.user.voice.channel
+            overwrites = channel.overwrites
 
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
+            members:set[discord.Member] = {member1, member2, member3, member4, member5}
+            members.discard(None)
+            trusted = []
 
-        channel = interaction.user.voice.channel
-        trusted_members = []
+            for member in members:
 
-        for member , overwrite in channel.overwrites.items():
-            if isinstance(member,discord.Member):
-                if member.id == interaction.user.id: # its not possible for owner of voice channel to be added as trusted but still checking it doesnt add owner in trusted member list
-                    continue
-                
                 if member.bot:
                     continue
+
+                if member.id == interaction.user.id:
+                    continue
                 
+                overwrite = overwrites.get(member, discord.PermissionOverwrite())
                 if (overwrite.connect is True and 
                     overwrite.speak is True and 
                     overwrite.stream is True and 
                     overwrite.use_voice_activation is True and 
                     overwrite.view_channel is True
-                    ):
-                    
-                    trusted_members.append(member)
-        
-        value = "\n".join(member.mention for member in trusted_members) if trusted_members else "No trusted users found."
+                    ): # preventing unnecessary overwrites
+                     continue
 
-        embed = discord.Embed(
-            title="Trusted Users",
-            description="These are currently Trusted Users.",
-            color=discord.Color.blurple()
+                overwrite.view_channel = True
+                overwrite.connect = True
+                overwrite.stream = True
+                overwrite.use_voice_activation = True
+                overwrite.speak = True
+
+                overwrites[member] = overwrite
+                trusted.append(member.mention)
+
+            view = "\n".join(trusted) if trusted else "No valid users were provided to trust."
+
+            if trusted:
+                await channel.edit(overwrites=overwrites)
+
+            embed = discord.Embed(
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="✅ Trusted :",
+                value=view,
+                inline=False
+            )
+            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
+        
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : trust - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
+    
+    @app_commands.command(name="trusted",description="Shows trusted users.")
+    @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
+    async def trusted(self,interaction:discord.Interaction):
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            trusted_members:list[discord.Member] = []
+
+            for member , overwrite in channel.overwrites.items():
+                if isinstance(member,discord.Member):
+                    if member.id == interaction.user.id: # its not possible for owner of voice channel to be added as trusted but still checking it doesnt add owner in trusted member list
+                        continue
+                    
+                    if member.bot:
+                        continue
+                    
+                    if (overwrite.connect is True and 
+                        overwrite.speak is True and 
+                        overwrite.stream is True and 
+                        overwrite.use_voice_activation is True and 
+                        overwrite.view_channel is True
+                        ):
+
+                        trusted_members.append(member)
+
+            value = "\n".join(member.mention for member in trusted_members) if trusted_members else "No trusted users found."
+
+            embed = discord.Embed(
+                title="Trusted Users",
+                description="These are currently Trusted Users.",
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="Currently Trusted :",
+                value=value,
+                inline=False
             )
 
-        embed.add_field(
-            name="Currently Trusted :",
-            value=value,
-            inline=False
-        )
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
+        
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : trusted - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
     
     @app_commands.command(name="untrust",description="Remove selected user from trusted user's list (Max 5 at a time).")
     @app_commands.checks.cooldown(1,TRUST_UNTRUST_COOLDOWN)
@@ -740,71 +770,86 @@ class VoiceControls(commands.Cog):
             member4: discord.Member | None = None,
             member5: discord.Member | None = None
             ):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
         
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        overwrites = channel.overwrites
-
-        members = {member1, member2, member3, member4, member5}
-        members.discard(None)
-        untrusted = []
-
-        for member in members:
-
-            if member.bot:
-                continue
-
-            if member.id == interaction.user.id:
-                continue
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if (overwrite.connect is not True and 
-                    overwrite.speak is not True and 
-                    overwrite.stream is not True and 
-                    overwrite.use_voice_activation is not True and 
-                    overwrite.view_channel is not True
-                    ): # Skip users who are not currently trusted
-                 continue
-            
-            # Reset permissions to inherit from role defaults
-            overwrite.view_channel = None
-            overwrite.connect = None
-            overwrite.stream = None
-            overwrite.use_voice_activation = None
-            overwrite.speak = None
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-            overwrites[member] = overwrite
-            untrusted.append(member.mention)
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        view = "\n".join(untrusted) if untrusted else "No valid users were provided to untrust."
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        if untrusted:
-            await channel.edit(overwrites=overwrites)
-        
-        embed = discord.Embed(
-            color=discord.Color.blurple()
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            overwrites = channel.overwrites
+
+            members:set[discord.Member] = {member1, member2, member3, member4, member5}
+            members.discard(None)
+            untrusted = []
+
+            for member in members:
+
+                if member.bot:
+                    continue
+
+                if member.id == interaction.user.id:
+                    continue
+                
+                overwrite = overwrites.get(member, discord.PermissionOverwrite())
+                if (overwrite.connect is not True and 
+                        overwrite.speak is not True and 
+                        overwrite.stream is not True and 
+                        overwrite.use_voice_activation is not True and 
+                        overwrite.view_channel is not True
+                        ): # Skip users who are not currently trusted
+                     continue
+                 
+                # Reset permissions to inherit from role defaults
+                overwrite.view_channel = None
+                overwrite.connect = None
+                overwrite.stream = None
+                overwrite.use_voice_activation = None
+                overwrite.speak = None
+
+                overwrites[member] = overwrite
+                untrusted.append(member.mention)
+
+            view = "\n".join(untrusted) if untrusted else "No valid users were provided to untrust."
+
+            if untrusted:
+                await channel.edit(overwrites=overwrites)
+
+            embed = discord.Embed(
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="✅ Untrusted :",
+                value=view,
+                inline=False
             )
 
-        embed.add_field(
-            name="✅ Untrusted :",
-            value=view,
-            inline=False
-        )
+            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
         
-        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : untrust - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="block",description="Kick and Block selected users from voice channel (Max 5 at a time).")
     @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
