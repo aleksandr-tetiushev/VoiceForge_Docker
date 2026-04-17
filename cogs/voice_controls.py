@@ -108,73 +108,83 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="claim", description="claim current voice channel")
     @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in servers only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction): # checks if interaction happened in voice channel
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
-            return
-        
-        channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
-
-        if not isinstance(channel,DB_CHANNEL_IO.Channel):
-            await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
-            return
-        
-        owner_id = channel.owner_id
-
-        if owner_id == interaction.user.id: # making sure the command isnt run by owner itself
-            await self.send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
-            return
-        
-        owner = interaction.guild.get_member(owner_id) if owner_id else None 
-        
-        voice_channel = interaction.guild.get_channel(channel.channel_id)
-
-        if not voice_channel or not owner:
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
-            return 
-
-        if owner in voice_channel.members: # checking if owner is in channel or not
-            await self.send(interaction=interaction,msg="❌ The current owner is still in the voice channel.")
-            return
-        
         try:
-            edit_status = DB_CHANNEL_IO.channel_edit(server_id=voice_channel.guild,channel_id=voice_channel.id)
-            if not edit_status:
-                await 
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command works in servers only.")
+                return
+            if not self.user_in_voice_channel_check(interaction): # checks if interaction happened in voice channel
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
                 return
 
-        owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
-            connect=True,
-            read_message_history=True,
-            speak=True,
-            stream=True,
-            use_voice_activation=True,
-            view_channel=True
-        )
+            db_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        overwrites = {
-            interaction.user : owner_overwrite,
-            self.bot.user: discord.PermissionOverwrite( # bot's permissions 
+            if not isinstance(db_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            owner_id = db_channel.owner_id
+
+            if owner_id == interaction.user.id: # making sure the command isnt run by owner itself
+                await self.send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
+                return
+
+            owner = interaction.guild.get_member(owner_id) if owner_id else None 
+
+            voice_channel = interaction.guild.get_channel(db_channel.channel_id)
+
+            if not voice_channel or not owner:
+                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                return 
+
+            if owner in voice_channel.members: # checking if owner is in channel or not
+                await self.send(interaction=interaction,msg="❌ The current owner is still in the voice channel.")
+                return
+
+           
+            edit_status = DB_CHANNEL_IO.channel_edit(server_id=voice_channel.guild.id,channel_id=voice_channel.id,new_owner_id=interaction.user.id)
+            if not edit_status:
+                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                return
+
+            owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
                 connect=True,
+                read_message_history=True,
+                speak=True,
+                stream=True,
+                use_voice_activation=True,
                 view_channel=True,
                 send_messages=True
             )
-        }
 
-        channel_edit = {
-            'overwrites' : overwrites,
-            'user_limit' : 0
-        }
+            overwrites = {
+                interaction.user : owner_overwrite,
+                self.bot.user: discord.PermissionOverwrite( # bot's permissions 
+                    connect=True,
+                    view_channel=True,
+                    send_messages=True
+                )
+            }
+
+            channel_edit = {
+                'overwrites' : overwrites,
+                'user_limit' : 0
+            }
+
+            if not voice_channel.name == f"{interaction.user.display_name}'s VC": # renaming voice channel 
+                channel_edit['name'] = f"{interaction.user.display_name}'s VC"
+
+            await voice_channel.edit(**channel_edit)
+
+            await self.send(interaction=interaction,msg="✅ You are now the owner of this voice channel.")
+            return
         
-        if not channel.name == f"{interaction.user.display_name}'s VC": # renaming voice channel 
-            channel_edit['name'] = f"{interaction.user.display_name}'s VC"
-
-        await channel.edit(**channel_edit)
-
-        await self.send(interaction=interaction,msg="✅ You are now the owner of this voice channel.")
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : claim - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="limit", description="Change Limit for current Voice Channel between 1-99 or enter 0 to reset limit")
     @app_commands.checks.cooldown(1,LIMIT_CHANGE_COOLDOWN)
