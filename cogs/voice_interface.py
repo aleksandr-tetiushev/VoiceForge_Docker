@@ -6,6 +6,7 @@ import config
 from discord.ext.commands.cooldowns import CooldownMapping
 from config import *
 from typing import TYPE_CHECKING
+from . import database_channel_operations as DB_CHANNEL_IO
 
 if TYPE_CHECKING:
     from cogs.voice_manager import VoiceManager
@@ -291,10 +292,27 @@ class VoicePanelView(discord.ui.View):
 
 
         return trusted , owner
-   
-    def _is_owner(self, vm: "VoiceManager", interaction: discord.Interaction,
-                  channel: discord.VoiceChannel) -> bool:
-        return vm.channel_to_owners.get(channel.id) == interaction.user.id
+    
+    def _user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
+        return bool(interaction.user.voice and interaction.user.voice.channel)
+
+    def _is_owner(self,interaction: discord.Interaction) -> bool:
+        if not interaction.guild_id:
+            return False
+    
+        if not self._user_in_voice_channel_check(interaction): # main command handles the user in voice but still to prevent crashes we check user's voice status
+            return False
+
+        channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+        if not isinstance(channel,DB_CHANNEL_IO.Channel):
+            return False
+        
+        if interaction.user.id == channel.owner_id:
+            return True
+        
+        return False
+
 
     def _is_in_temp_category(self, interaction: discord.Interaction) -> bool:
         """
