@@ -188,37 +188,52 @@ class VoiceControls(commands.Cog):
     
     @app_commands.command(name="limit", description="Change Limit for current Voice Channel between 1-99 or enter 0 to reset limit")
     @app_commands.checks.cooldown(1,LIMIT_CHANGE_COOLDOWN)
-    async def limit(self,interaction:discord.Interaction,limit:int): 
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
-            return
-        
-        if not 0 <= limit <= 99: # making sure limit isnt more or less than limit by discord
-            await self.send(interaction=interaction,msg="❌ Limit must be between 1–99, or 0 to remove the limit.")
-            return
-        
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
+    async def limit(self,interaction:discord.Interaction,limit:int):
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        channel = interaction.user.voice.channel 
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if not await self.verify_ownership(voice_manager,interaction):
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not 0 <= limit <= 99: # making sure limit isnt more or less than limit by discord
+                await self.send(interaction=interaction,msg="❌ Limit must be between 1–99, or 0 to remove the limit.")
+                return
+
+            channel = interaction.user.voice.channel 
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            if channel.user_limit == limit: # avoiding unnecessary api calls 
+               await self.send(interaction, "❌ This channel already has that limit.")
+               return
+
+            if limit == 0: # vc limit reset
+                await channel.edit(user_limit=0)
+                await self.send(interaction=interaction,msg=f"✅ Voice channel limit removed.")
+                return
+
+            await channel.edit(user_limit=limit)
+            await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
             return
         
-        if channel.user_limit == limit: # avoiding unnecessary api calls 
-           await self.send(interaction, "❌ This channel already has that limit.")
-           return
-        
-        if limit == 0: # vc limit reset
-            await channel.edit(user_limit=0)
-            await self.send(interaction=interaction,msg=f"✅ Voice channel limit removed.")
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : limit - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-        await channel.edit(user_limit=limit)
-        await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
-        return
         
     @app_commands.command(name="kick",description="Kick users from your voice channel (max 5 at a time)")
     @app_commands.checks.cooldown(1,KICK_MEMBER_COOLDOWN)
