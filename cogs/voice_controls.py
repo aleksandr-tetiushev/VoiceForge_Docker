@@ -519,66 +519,93 @@ class VoiceControls(commands.Cog):
             await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
 
-
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def hide(self, interaction: discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            everyone = interaction.guild.default_role
+
+            if not channel.permissions_for(everyone).view_channel:
+                await self.send(interaction, "❌ This voice channel is already hidden.")
+                return
+
+            overwrite = channel.overwrites_for(everyone)
+            overwrite.view_channel = False
+
+            await channel.set_permissions(everyone, overwrite=overwrite)
+            await self.send(interaction, "🚫 Voice channel hidden.")
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : hide - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        everyone = interaction.guild.default_role
-
-        if not channel.permissions_for(everyone).view_channel:
-            await self.send(interaction, "❌ This voice channel is already hidden.")
-            return
-
-        overwrite = channel.overwrites_for(everyone)
-        overwrite.view_channel = False
-
-        await channel.set_permissions(everyone, overwrite=overwrite)
-        await self.send(interaction, "🚫 Voice channel hidden.")
 
     @app_commands.command(name="unhide",description="Make the current voice channel visible to everyone.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def unhide(self, interaction: discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            everyone = interaction.guild.default_role
+
+            if channel.permissions_for(everyone).view_channel:
+                await self.send(interaction, "❌ This voice channel is already visible.")
+                return
+
+            overwrite = channel.overwrites_for(everyone)
+            overwrite.view_channel = None # restore default visibility according to server settings
+
+            await channel.set_permissions(everyone, overwrite=overwrite)
+            await self.send(interaction, "👁️ Voice channel is now visible.")
             return
-
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        everyone = interaction.guild.default_role
-
-        if channel.permissions_for(everyone).view_channel:
-            await self.send(interaction, "❌ This voice channel is already visible.")
-            return
-
-        overwrite = channel.overwrites_for(everyone)
-        overwrite.view_channel = None # restore default visibility according to server settings
-
-        await channel.set_permissions(everyone, overwrite=overwrite)
-        await self.send(interaction, "👁️ Voice channel is now visible.")
-        return
     
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unhide - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
+
     @app_commands.command(name="trust",description="Let selected users view and connect even if channel is locked or hidden (Max 5 at a time).")
     @app_commands.checks.cooldown(1, TRUST_UNTRUST_COOLDOWN)
     async def trust(self,interaction: discord.Interaction,
