@@ -8,6 +8,7 @@ import asyncio
 from . import databaseio as DB_SERVER_IO
 from logger import log_error , log_info
 import traceback
+from . import database_channel_operations as DB_CHANNEL_IO
 
 # all voice control commands
 class VoiceControls(commands.Cog):
@@ -17,31 +18,20 @@ class VoiceControls(commands.Cog):
     def is_guild(self,interaction: discord.Interaction) -> bool:
         return isinstance(interaction.guild, discord.Guild)
     
-    async def verify_ownership(self,voice_manager:VoiceManager,interaction:discord.Interaction)-> bool: # verifying ownership 
+    async def verify_ownership(self,interaction:discord.Interaction)-> bool: # verifying ownership 
         if not self.user_in_voice_channel_check(interaction): # main command handles the user in voice but still to prevent crashes we check user's voice status
             return False
 
-        channel = interaction.user.voice.channel 
-        
-        if voice_manager is None:
-            await self.send(interaction=interaction,msg="Voice manager not available.")
-            return False
-        
-        if voice_manager.category_id != channel.category_id: # making sure command runs only in custom voice channels 
-            await self.send(interaction=interaction,msg="❌ This command works in custom voice channels only.")
-            return False
-        
-        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+        channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if owner_id is None: # making sure channel have a owner or else indicating user to register first 
-            await self.send(interaction=interaction,msg="❌ This channel has no registered owner. Use `/claim` to take ownership.")
+        if not isinstance(channel,DB_CHANNEL_IO.Channel):
             return False
         
-        if interaction.user.id != owner_id: # verify if user is voice owner 
-            await self.send(interaction=interaction,msg="❌ You are not the owner of this voice channel.")
-            return False
+        if interaction.user.id == channel.owner_id:
+            return True
         
-        return True
+        return False
+
 
     def user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
         return bool(interaction.user.voice and interaction.user.voice.channel)
