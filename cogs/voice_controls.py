@@ -243,58 +243,75 @@ class VoiceControls(commands.Cog):
                    member3: discord.Member|None=None,
                    member4: discord.Member|None=None,
                    member5: discord.Member|None=None):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
-            return
         
-        members = [member1,member2,member3,member4,member5]
-
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
-
-        if not await self.verify_ownership(voice_manager,interaction):
-            return
-        members = set(members) # making sure there are no repeated users
-        kicked_members = []
-        for member in members:
-
-            if not member:
-                continue
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            if member.id == interaction.user.id:
-                continue
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
             
-            if not self.user_in_same_voice_channel(interaction, member):
-                continue
-            
-            await member.move_to(None)
+            members:discord.Member = [member1,member2,member3,member4,member5]
 
-            kicked_members.append(member.mention)
-            await asyncio.sleep(0.3)  # delay to avoid rate limit
+            members:set[discord.Member] = set(members) # making sure there are no repeated users
+            kicked_members = []
+            for member in members:
 
-        value = "\n".join(kicked_members) if kicked_members else "No users were kicked."
+                if not member:
+                    continue
+                
+                if member.id == interaction.user.id:
+                    continue
+                
+                if not self.user_in_same_voice_channel(interaction, member):
+                    continue
+                
+                await member.move_to(None)
 
-        embed = discord.Embed(
-            title="Kicked Users",
-            description="The following users were kicked from your voice channel.",
-            color=discord.Color.blurple()
-        )
+                kicked_members.append(member.mention)
+                await asyncio.sleep(0.3)  # delay to avoid rate limit
 
-        embed.add_field(
-            name="Kicked Members:",
-            value=value,
-            inline=False
-        )
+            value = "\n".join(kicked_members) if kicked_members else "No users were kicked."
 
-        embed.set_footer(
-            text="Note: If a user you entered does not appear above, they were either not in your voice channel or could not be removed."
+            embed = discord.Embed(
+                title="Kicked Users",
+                description="The following users were kicked from your voice channel.",
+                color=discord.Color.blurple()
             )
 
+            embed.add_field(
+                name="Kicked Members:",
+                value=value,
+                inline=False
+            )
 
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
+            embed.set_footer(
+                text="Note: If a user you entered does not appear above, they were either not in your voice channel or could not be removed."
+                )
+
+
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
+    
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : kick - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
             
     @app_commands.command(name="lock",description="Lock current voice channel")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
