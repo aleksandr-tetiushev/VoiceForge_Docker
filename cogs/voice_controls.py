@@ -980,7 +980,7 @@ class VoiceControls(commands.Cog):
             await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
             return 
         
-    @app_commands.command(name="unregister",description="Unregisters the registred voice channel and its category as creator channel and its category for temp channels.")
+    @app_commands.command(name="unregister",description="Unregisters the registred voice channel from server config.")
     async def unregister(self,interaction: discord.Interaction):
         try:
             if not self.is_guild(interaction=interaction):

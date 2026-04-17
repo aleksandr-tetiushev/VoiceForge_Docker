@@ -81,7 +81,7 @@ def write_server(server: Server,db_name: str = DB_NAME) -> bool:
         bool: True if successful, False otherwise
     """
     # Validation
-    if not server.server_id or not server.creator_channel_id:
+    if not server.server_id or not server.creator_channel_id or not server.category_id:
         return False
     
     conn: sqlite3.Connection | None = None

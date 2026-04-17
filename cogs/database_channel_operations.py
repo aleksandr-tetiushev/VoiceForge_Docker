@@ -81,7 +81,7 @@ def channel_write(channel: Channel, db_name: str = DB_NAME) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    if not channel.server_id or not channel.channel_id or not channel.owner_id:
+    if not channel.server_id or not channel.channel_id or not channel.owner_id or not channel.category_id:
         return False
     
     conn: sqlite3.Connection | None = None
