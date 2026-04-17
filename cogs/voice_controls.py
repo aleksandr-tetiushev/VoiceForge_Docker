@@ -60,76 +60,90 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="rename", description="Rename your voice channel (max 32 characters)")
     @app_commands.checks.cooldown(1, RENAME_COOLDOWN)
     async def rename(self, interaction: discord.Interaction, name: str):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command works in servers only.",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
-            return
-        name = name.strip()
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command works in servers only.")
+                return
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+            name = name.strip()
+    
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if not name:
-            await self.send(interaction=interaction,msg="❌ Channel name cannot be empty.")
-            return
-        
-        if len(name) > MAX_RENAME_CHARACTER_LIMIT:
-            await self.send(interaction=interaction,msg=f"❌ Channel names cannot exceed {MAX_RENAME_CHARACTER_LIMIT} characters.")
-            return
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        channel = interaction.user.voice.channel 
-        
-        if not self.verify_ownership(interaction=interaction):
-            await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+            if not name:
+                await self.send(interaction=interaction,msg="❌ Channel name cannot be empty.")
+                return
+            
+            if len(name) > MAX_RENAME_CHARACTER_LIMIT:
+                await self.send(interaction=interaction,msg=f"❌ Channel names cannot exceed {MAX_RENAME_CHARACTER_LIMIT} characters.")
+                return
+    
+            channel = interaction.user.voice.channel 
+            
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            if channel.name == name:
+                await self.send(interaction=interaction,msg="❌ The channel already has this name.")
+                return
+            
+            await channel.edit(name=name) #changing voice channel name
+            await self.send(interaction=interaction,msg="✅ Voice channel renamed successfully.")
             return
-        
-        if channel.name == name:
-            await self.send(interaction=interaction,msg="❌ The channel already has this name.")
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : rename - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        
-        await channel.edit(name=name) #changing voice channel name
-        await self.send(interaction=interaction,msg="✅ Voice channel renamed successfully.")
-        return
+    
     
     @app_commands.command(name="claim", description="claim current voice channel")
     @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
         if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+            await interaction.response.send_message("❌ This command is works in servers only",ephemeral=True)
             return
-        if not self.user_in_voice_channel_check(interaction):
+        if not self.user_in_voice_channel_check(interaction): # checks if interaction happened in voice channel
             await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
             return
         
-        channel = interaction.user.voice.channel 
-        
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
+        channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if voice_manager is None:
-            await self.send(interaction=interaction,msg="Voice manager not available.")
+        if not isinstance(channel,DB_CHANNEL_IO.Channel):
+            await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
             return
         
-        if voice_manager.category_id != channel.category_id: # making sure command runs only in custom voice channels 
-            await self.send(interaction=interaction,msg="❌ This command works in custom voice channels only.")
-            return
-
-        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+        owner_id = channel.owner_id
 
         if owner_id == interaction.user.id: # making sure the command isnt run by owner itself
             await self.send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
-            return 
+            return
         
         owner = interaction.guild.get_member(owner_id) if owner_id else None 
         
-        if owner and owner in channel.members: # checking if owner is in channel or not
+        voice_channel = interaction.guild.get_channel(channel.channel_id)
+
+        if not voice_channel or not owner:
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return 
+
+        if owner in voice_channel.members: # checking if owner is in channel or not
             await self.send(interaction=interaction,msg="❌ The current owner is still in the voice channel.")
             return
         
-        if owner_id: # making sure if old owner is still in dataset it get removed if its not in voice channel to avoid 2 owner condition
-            voice_manager.channel_to_owners.pop(channel.id,None)
-            voice_manager.owners_to_channel.pop(owner_id, None)
-        
-        voice_manager.channel_to_owners[channel.id] = interaction.user.id
-        voice_manager.owners_to_channel[interaction.user.id] = channel.id
+        try:
+            edit_status = DB_CHANNEL_IO.channel_edit(server_id=voice_channel.guild,channel_id=voice_channel.id)
+            if not edit_status:
+                await 
+                return
 
         owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
             connect=True,
