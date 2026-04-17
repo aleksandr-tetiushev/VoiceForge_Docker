@@ -759,8 +759,7 @@ class VoiceControls(commands.Cog):
             log_error(message=f"Location : trusted - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
             await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-    
+ 
     @app_commands.command(name="untrust",description="Remove selected user from trusted user's list (Max 5 at a time).")
     @app_commands.checks.cooldown(1,TRUST_UNTRUST_COOLDOWN)
     async def untrust(self,interaction:discord.Interaction,
@@ -860,109 +859,139 @@ class VoiceControls(commands.Cog):
                     member4: discord.Member | None = None,
                     member5: discord.Member | None = None
                     ):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
         
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        overwrites = channel.overwrites
-
-        members:set = {member1, member2, member3, member4, member5}
-        members.discard(None)
-        blocked = []
-
-        for member in members:
-
-            if member.bot:
-                continue
-
-            if member.id == interaction.user.id:
-                continue
-
-            overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if overwrite.connect is False and overwrite.view_channel is False: # preventing unnecessary overwrites but setting it to false if any one of 2 required permissions is not False
-                 continue
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            overwrite.view_channel = False # will not show channel to blocked user
-            overwrite.connect = False # will not let blocked user to connect
-            overwrites[member] = overwrite
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-            if member in channel.members: # kicking user from voice channel 
-                await member.move_to(None) 
-            
-            blocked.append(member.mention)
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        view = "\n".join(blocked) if blocked else "No valid users were provided to block."
-        
-        await channel.edit(overwrites=overwrites)
-        embed = discord.Embed(
-            color=discord.Color.blurple()
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            overwrites = channel.overwrites
+
+            members:set[discord.Member] = {member1, member2, member3, member4, member5}
+            members.discard(None)
+            blocked = []
+
+            for member in members:
+
+                if member.bot:
+                    continue
+
+                if member.id == interaction.user.id:
+                    continue
+
+                overwrite = overwrites.get(member, discord.PermissionOverwrite())
+                if overwrite.connect is False and overwrite.view_channel is False: # preventing unnecessary overwrites but setting it to false if any one of 2 required permissions is not False
+                     continue
+                 
+                overwrite.view_channel = False # will not show channel to blocked user
+                overwrite.connect = False # will not let blocked user to connect
+                overwrites[member] = overwrite
+
+                if member in channel.members: # kicking user from voice channel 
+                    await member.move_to(None) 
+
+                blocked.append(member.mention)
+
+            view = "\n".join(blocked) if blocked else "No valid users were provided to block."
+
+            await channel.edit(overwrites=overwrites)
+            embed = discord.Embed(
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="✅ Blocked :",
+                value=view,
+                inline=False
             )
 
-        embed.add_field(
-            name="✅ Blocked :",
-            value=view,
-            inline=False
-        )
+            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
         
-        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : block - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
     @app_commands.command(name="blocked",description="Shows blocked users.")
     @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def blocked(self,interaction:discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        voice_manager = self.get_voice_manager()
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        channel = interaction.user.voice.channel
-        blocked_members = []
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
 
-        for member , overwrite in channel.overwrites.items():
-            if isinstance(member,discord.Member):
-                if member.id == interaction.user.id: # owner should never appear in blocked list
-                    continue
-                
-                if member.bot:
-                    continue
-                
-                if overwrite.view_channel is False and overwrite.connect is False:
-                    blocked_members.append(member)
-        
-        value = "\n".join(member.mention for member in blocked_members) if blocked_members else "No blocked users found."
+            channel = interaction.user.voice.channel
+            blocked_members:list[discord.Member] = []
 
-        embed = discord.Embed(
-            title="Blocked Users",
-            description="These users are currently blocked from the voice channel.",
-            color=discord.Color.blurple()
+            for member , overwrite in channel.overwrites.items():
+                if isinstance(member,discord.Member):
+                    if member.id == interaction.user.id: # owner should never appear in blocked list
+                        continue
+                    
+                    if member.bot:
+                        continue
+                    
+                    if overwrite.view_channel is False and overwrite.connect is False:
+                        blocked_members.append(member)
+
+            value = "\n".join(member.mention for member in blocked_members) if blocked_members else "No blocked users found."
+
+            embed = discord.Embed(
+                title="Blocked Users",
+                description="These users are currently blocked from the voice channel.",
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="Currently Blocked :",
+                value=value,
+                inline=False
             )
 
-        embed.add_field(
-            name="Currently Blocked :",
-            value=value,
-            inline=False
-        )
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
         
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : blocked - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="unblock",description="Remove selected users from the blocked users list (Max 5 at a time).")
     @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
@@ -973,133 +1002,157 @@ class VoiceControls(commands.Cog):
             member4: discord.Member | None = None,
             member5: discord.Member | None = None
             ):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
         
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
-
-        voice_manager = self.get_voice_manager()
-
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-
-        channel = interaction.user.voice.channel
-        overwrites = channel.overwrites
-
-        members = {member1, member2, member3, member4, member5}
-        members.discard(None)
-        unblocked = []
-
-        for member in members:
-
-            if member.bot:
-                continue
-
-            if member.id == interaction.user.id:
-                continue
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            overwrite = overwrites.get(member, discord.PermissionOverwrite())
-            if overwrite.connect is not False and overwrite.view_channel is not False: # preventing unnecessary overwrites but reseting if any one of 2 required permissions are False
-                 continue
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-            # Reset permissions to inherit from role defaults
-            overwrite.view_channel = None
-            overwrite.connect = None
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-            overwrites[member] = overwrite
-            unblocked.append(member.mention)
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        view = "\n".join(unblocked) if unblocked else "No valid users were provided to unblock."
-        
-        await channel.edit(overwrites=overwrites)
-        embed = discord.Embed(
-            color=discord.Color.blurple()
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+
+            channel = interaction.user.voice.channel
+            overwrites = channel.overwrites
+
+            members:set[discord.Member] = {member1, member2, member3, member4, member5}
+            members.discard(None)
+            unblocked:list[discord.Member] = []
+
+            for member in members:
+
+                if member.bot:
+                    continue
+
+                if member.id == interaction.user.id:
+                    continue
+                
+                overwrite = overwrites.get(member, discord.PermissionOverwrite())
+                if overwrite.connect is not False and overwrite.view_channel is not False: # preventing unnecessary overwrites but reseting if any one of 2 required permissions are False
+                     continue
+
+                # Reset permissions to inherit from role defaults
+                overwrite.view_channel = None
+                overwrite.connect = None
+
+                overwrites[member] = overwrite
+                unblocked.append(member.mention)
+
+            view = "\n".join(unblocked) if unblocked else "No valid users were provided to unblock."
+
+            await channel.edit(overwrites=overwrites)
+            embed = discord.Embed(
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="✅ Unblocked Users:",
+                value=view,
+                inline=False
             )
 
-        embed.add_field(
-            name="✅ Unblocked Users:",
-            value=view,
-            inline=False
-        )
+            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
+            await self.send_embed(interaction=interaction,embed=embed)
+            return
         
-        embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
-        await self.send_embed(interaction=interaction,embed=embed)
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unblock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="transfer",description="Transfer your voice channel to another member in the channel.")
     @app_commands.checks.cooldown(1,CLAIM_TRANSFER_COOLDOWN)
     async def transfer(self,interaction:discord.Interaction,new_owner:discord.Member):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction, msg="❌ You must be in a voice channel to use this command.")
-            return
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        voice_manager = self.get_voice_manager()
-        channel = interaction.user.voice.channel 
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
         
-        if not await self.verify_ownership(voice_manager, interaction):
-            return
-        
+            channel = interaction.user.voice.channel
 
+            if new_owner.bot:
+                await self.send(interaction,msg="❌ Invalid User.")
+                return
 
-        if new_owner.bot:
-            await self.send(interaction,msg="❌ Invalid User.")
-            return
-        
-        if interaction.user.id == new_owner.id:
-            await self.send(interaction=interaction,msg="❌ You cannot transfer the voice channel to yourself.")
-            return
+            if interaction.user.id == new_owner.id:
+                await self.send(interaction=interaction,msg="❌ You cannot transfer the voice channel to yourself.")
+                return
 
-        if new_owner not in channel.members: # checking if new_owner is in channel or not
-            await self.send(interaction=interaction,msg="❌ Selected user is not in the voice channel.")
-            return
-        
-        owner_id =  voice_manager.channel_to_owners.get(channel.id) # fetching owner id from ownership data
+            if new_owner not in channel.members: # checking if new_owner is in channel or not
+                await self.send(interaction=interaction,msg="❌ Selected user is not in the voice channel.")
+                return
 
-        if owner_id:
-             # removing ownership data for current owner
-            voice_manager.channel_to_owners.pop(channel.id,None)
-            voice_manager.owners_to_channel.pop(owner_id, None)
-        
-        # adding ownership data for new owner
-        voice_manager.channel_to_owners[channel.id] = new_owner.id
-        voice_manager.owners_to_channel[new_owner.id] = channel.id
-
-        owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
-            connect=True,
-            read_message_history=True,
-            speak=True,
-            stream=True,
-            use_voice_activation=True,
-            view_channel=True
-        )
-
-        overwrites = {
-            new_owner : owner_overwrite,
-            self.bot.user: discord.PermissionOverwrite( # bot's permissions 
+            owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
                 connect=True,
-                view_channel=True,
-                send_messages=True
+                read_message_history=True,
+                speak=True,
+                stream=True,
+                use_voice_activation=True,
+                view_channel=True
             )
-        }
 
-        channel_edit = {
-            'overwrites' : overwrites,
-            'user_limit' : 0
-        }
-        
-        if not channel.name == f"{new_owner.display_name}'s VC": # renaming voice channel 
-            channel_edit['name'] = f"{new_owner.display_name}'s VC"
+            overwrites = {
+                new_owner : owner_overwrite,
+                self.bot.user: discord.PermissionOverwrite( # bot's permissions 
+                    connect=True,
+                    view_channel=True,
+                    send_messages=True
+                )
+            }
 
-        await channel.edit(**channel_edit)
+            channel_edit = {
+                'overwrites' : overwrites,
+                'user_limit' : 0
+            }
+
+            if not channel.name == f"{new_owner.display_name}'s VC": # renaming voice channel 
+                channel_edit['name'] = f"{new_owner.display_name}'s VC"
+
+            await channel.edit(**channel_edit)
+            edit_status = DB_CHANNEL_IO.channel_edit(server_id=interaction.guild_id,channel_id=channel.id,new_owner_id=new_owner.id)
+
+            if not edit_status:
+                log_error(message=f"Location : transfer - file : voice_controls.py - Error Name : edit_status error - description : reached till here because channel_read returned info but edit didnt worked")
+                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                return
+            
+            await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
+            return
         
-        await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : transfer - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="register",description="Registers voice channel and its category as creator channel and its category for temp channels.")
     async def register(self,interaction: discord.Interaction, channel: discord.VoiceChannel = None):
