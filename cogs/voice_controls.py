@@ -402,30 +402,42 @@ class VoiceControls(commands.Cog):
     @app_commands.command(name="delete",description="Delete current voice channel")
     @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
     async def delete(self,interaction:discord.Interaction):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
-            return
-        
-        channel = interaction.user.voice.channel 
-        
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        if not await self.verify_ownership(voice_manager,interaction):
-            return
-        
-        owner_id =  voice_manager.channel_to_owners.get(channel.id)
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if not owner_id:
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+        
+            try:
+                await interaction.channel.delete(reason=f"Delete command used.")
+                delete_status = DB_CHANNEL_IO.channel_delete(server_id=interaction.channel.guild.id,channel_id=interaction.channel_id)
+            except discord.NotFound:
+                delete_status = DB_CHANNEL_IO.channel_delete(server_id=interaction.channel.guild.id,channel_id=interaction.channel_id)
+                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                return
+            
             return
         
-        voice_manager.owners_to_channel.pop(owner_id,None)
-        voice_manager.channel_to_owners.pop(interaction.user.voice.channel.id,None)
-        await self.send(interaction=interaction,msg="Voice channel deleted.")
-        await channel.delete()
-        return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : delete - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
     
     @app_commands.command(name="invite",description="Send invite to user for your voice channel (max 5 invites at a time)")
     @app_commands.checks.cooldown(1,INVITE_COOLDOWN)
