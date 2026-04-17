@@ -932,6 +932,8 @@ class VoiceControls(commands.Cog):
         try:
             if not self.is_guild(interaction=interaction):
                 await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                return
+            
             await interaction.response.defer()
             
             if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
@@ -967,16 +969,59 @@ class VoiceControls(commands.Cog):
                 DB_SERVER_IO.server_delete(interaction=interaction) # remove server entry
                 await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.",ephemeral=False)
                 return 
-            
-            voice_manager.load_server_cache() # load current entry into voice_manager in-memory cache to start listening that channel also 
+
+            voice_manager.creator_channels[channel.guild.id] = channel.id
+            voice_manager.temp_channel_category[channel.guild.id] = channel.category.id # load current entry into voice_manager in-memory cache to start listening that channel also 
             await self.send(interaction=interaction,msg=f"✅ Channel registred successfully.",ephemeral=False)
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
-            log_error(message=f"Location : register , filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
+            log_error(message=f"Location : register - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
             await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
             return 
-
+        
+    @app_commands.command(name="unregister",description="Unregisters the registred voice channel and its category as creator channel and its category for temp channels.")
+    async def unregister(self,interaction: discord.Interaction):
+        try:
+            if not self.is_guild(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                return
+            await interaction.response.defer()
+            
+            if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
+                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                return
+            
+            if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
+                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                return
+            
+            server_object , read_status = DB_SERVER_IO.server_read(interaction=interaction)
+    
+            if not read_status: # fallback on no entry
+                await self.send(interaction=interaction,msg=f"❌ This server don't have any registred creator channel please register first using `/register`.")
+                return
+            
+            write_status = DB_SERVER_IO.server_delete(interaction=interaction)
+    
+            if not write_status:
+                await self.send(interaction=interaction,msg=f"❌ Failed To delete channel please retry.",ephemeral=False)
+                return
+            
+            voice_manager = self.get_voice_manager()
+            if not isinstance(voice_manager,VoiceManager):
+                await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.",ephemeral=False)
+                return 
+            
+            voice_manager.temp_channel_category.pop(interaction.guild_id,None)
+            voice_manager.creator_channels.pop(interaction.guild_id,None) # remove from in-memory cache
+            await self.send(interaction=interaction,msg=f"✅ Channel unregistred successfully {self.bot.user.mention} will still track existing temp voice channels.",ephemeral=False)
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unregister - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            return
 
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
