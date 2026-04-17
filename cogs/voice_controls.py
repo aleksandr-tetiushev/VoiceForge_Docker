@@ -103,8 +103,7 @@ class VoiceControls(commands.Cog):
             log_error(message=f"Location : rename - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
             await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-    
-    
+       
     @app_commands.command(name="claim", description="claim current voice channel")
     @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
@@ -447,65 +446,79 @@ class VoiceControls(commands.Cog):
                    member3: discord.Member|None=None,
                    member4: discord.Member|None=None,
                    member5: discord.Member|None=None):
-        if not self.is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-
-        if not self.user_in_voice_channel_check(interaction):
-            await self.send(interaction, "❌ You must be in a voice channel to use this command.")
-            return
-        
-        members = {member1,member2,member3,member4,member5}
-        members.discard(None)
-        channel = interaction.user.voice.channel
-
-        voice_manager = self.get_voice_manager() # get VoiceManager cog
-
-        if not await self.verify_ownership(voice_manager,interaction):
-            return
-        
-        guild = interaction.guild
-        invite_link = f"https://discord.com/channels/{guild.id}/{channel.id}"
-
-        invite_sent = []
-        
-        for member in members:
-            if not member:
-                continue
-
-            if member.bot:
-                continue
-
-            try: 
-                if member.id == interaction.user.id:
-                    continue
-                 
-                if self.user_in_same_voice_channel(interaction, member):
-
-                    continue
-      
-                await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}") 
-                invite_sent.append(member.mention)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self.is_guild(interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
             
-            except discord.Forbidden:
-                pass
+            if not self.user_in_voice_channel_check(interaction):
+                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        embed = discord.Embed(color=discord.Color.blurple())
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        value = "\n".join(invite_sent) if invite_sent else "No users were invited."
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self.verify_ownership(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
         
-        embed.add_field(
-            name="✅ Invited:",
-            value=value,
-            inline=False
-        )
-        
-        embed.set_footer(
-            text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
-        )
+            members:set[discord.Member] = {member1,member2,member3,member4,member5}
+            members.discard(None)
+            channel = interaction.user.voice.channel
 
-        await self.send_embed(interaction=interaction, embed=embed)
-        return
+            guild = interaction.guild
+            invite_link = f"https://discord.com/channels/{guild.id}/{channel.id}"
+
+            invite_sent = []
+
+            for member in members:
+                if not member:
+                    continue
+
+                if member.bot:
+                    continue
+
+                try: 
+                    if member.id == interaction.user.id:
+                        continue
+                    
+                    if self.user_in_same_voice_channel(interaction, member):
+                        continue
+                    
+                    await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}") 
+                    invite_sent.append(member.mention)
+
+                except discord.Forbidden:
+                    pass
+
+            embed = discord.Embed(color=discord.Color.blurple())
+
+            value = "\n".join(invite_sent) if invite_sent else "No users were invited."
+
+            embed.add_field(
+                name="✅ Invited:",
+                value=value,
+                inline=False
+            )
+
+            embed.set_footer(
+                text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
+            )
+
+            await self.send_embed(interaction=interaction, embed=embed)
+            return
+        
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : invite - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
+
 
     @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
