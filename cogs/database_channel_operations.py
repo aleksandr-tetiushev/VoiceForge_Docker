@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 from logger import log_error , log_info
 import traceback
+from datetime import datetime , timezone , timedelta
 
 load_dotenv()
 DB_NAME=os.getenv("CHANNEL_DB_NAME") 
@@ -147,6 +148,92 @@ def channel_read(server_id: int, channel_id: int, db_name: str = DB_NAME) -> Cha
         log_error(message=f"Location : channel_read - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
         return None
     
+    finally:
+        if conn:
+            conn.close()
+
+def get_channel_by_owner(server_id: int, owner_id: int, db_name: str = DB_NAME) -> Channel | None:
+    """
+    READ: Fetch channel data from database by server_id and owner_id
+    
+    Args:
+        server_id: Discord guild ID
+        owner_id: Discord Member ID
+        db_name: Database file name
+    
+    Returns:
+        Channel object if found, None otherwise
+    """
+    conn: sqlite3.Connection | None = None
+    
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor: sqlite3.Cursor = conn.cursor()
+        
+        # Query by BOTH server_id AND owner_id
+        cursor.execute("""
+            SELECT server_id, owner_id, category_id, channel_id
+            FROM serversChannels
+            WHERE server_id = ? AND owner_id = ?
+        """, (server_id, owner_id))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            channel: Channel = Channel(**dict(row))
+            return channel
+        else:
+            return None
+
+    except sqlite3.Error as e:
+        exception_traceback: str = traceback.format_exc()
+        error_name: str = type(e).__name__
+        log_error(message=f"Location : get_channel_by_owner - file : database_channel_operations.py : Error Name - {error_name}",exc_info=exception_traceback)
+        return None
+    
+    finally:
+        if conn:
+            conn.close()
+
+def get_last_channel_creation_delta(server_id: int, user_id: int, db_name: str = DB_NAME) -> timedelta | None:
+    """
+    Returns time difference between now and last channel creation time for a user in a server.
+    """
+    conn: sqlite3.Connection | None = None
+
+    try:
+        conn = sqlite3.connect(db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT created_at
+            FROM serversChannels
+            WHERE server_id = ? AND owner_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (server_id, user_id))
+
+        row = cursor.fetchone()
+
+        if not row or not row["created_at"]:
+            return None
+
+        created_at = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+
+        return now - created_at
+
+    except sqlite3.Error as e:
+        exception_traceback = traceback.format_exc()
+        error_name = type(e).__name__
+        log_error(
+            message=f"Location : get_last_channel_creation_delta - file : database_channel_operations.py : Error Name - {error_name}",
+            exc_info=exception_traceback
+        )
+        return None
+
     finally:
         if conn:
             conn.close()
