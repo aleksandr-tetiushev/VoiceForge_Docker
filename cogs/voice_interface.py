@@ -44,9 +44,7 @@ class RenameModal(discord.ui.Modal, title="Rename Your Channel"):
 
     async def on_submit(self, interaction: discord.Interaction):
         await self.channel.edit(name=self.new_name.value)
-        await interaction.response.send_message(
-            f"✅ Channel renamed to **{self.new_name.value}**", ephemeral=True
-        )
+        await send(interaction=interaction,msg=f"✅ Channel renamed to **{self.new_name.value}**")
 
 
 class LimitModal(discord.ui.Modal, title="Set User Limit"):
@@ -491,25 +489,41 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="✏️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:rename", row=0)
     async def rename(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        vm, channel = await self._owner_check(interaction)
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        if not channel:
-            return
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
         
-        retry_after = self._cooldowns.check("rename",1,float(RENAME_COOLDOWN),interaction)
-        
-        if retry_after:
-            await self._cooldown_response(interaction,retry_after)
-            return
+            channel =  interaction.user.voice.channel
 
-        if not channel:
-            return
-        await interaction.response.send_modal(RenameModal(channel))
+            retry_after = self._cooldowns.check("rename",1,float(RENAME_COOLDOWN),interaction)
 
+            if retry_after:
+                await self._cooldown_response(interaction,retry_after)
+                return
+            
+            await interaction.response.send_modal(RenameModal(channel))
+            return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : rename - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
     @discord.ui.button(emoji="👥", style=discord.ButtonStyle.secondary,
                        custom_id="panel:limit", row=0)
