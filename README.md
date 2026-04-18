@@ -14,6 +14,7 @@ A self-hosted Discord bot for dynamic temporary voice channel management with a 
 - 🔑 **Ownership persistence** — Channel owner data survives across bot restarts via database
 - 📊 **New database modules** — `database_server_operations.py` and `database_channel_operations.py` for structured data handling
 - 🎯 **Per-channel cooldowns** — Panel button cooldowns now apply per-channel instead of globally
+- 🌐 **Multi-Server Operation Capability** — Persistence database storage allows multiple server operations
 
 ### v2.1 — Stability & Permission Fixes
 - 🔁 **On-start VC recovery** — Automatic channel creation for users in the creator channel when bot comes online
