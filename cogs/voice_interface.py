@@ -170,10 +170,6 @@ class BanUserSelect(discord.ui.View):
             return await interaction.response.send_message(
                 "❌ Member not found in this server.", ephemeral=True
             )
-        if target.bot:
-            return await interaction.response.send_message(
-                "❌ You cannot ban bots.", ephemeral=True
-            )
         if target.id == interaction.user.id:
             return await interaction.response.send_message(
                 "❌ You cannot ban yourself.", ephemeral=True
@@ -792,6 +788,20 @@ class VoicePanelView(discord.ui.View):
                 for m in trusted[:25]
             ]
 
+            async def do_untrust(inner: discord.Interaction, target: discord.Member):
+                if target:
+                    await channel.set_permissions(target, overwrite=None)
+                    await inner.response.send_message(
+                        f"⛔ **{target.display_name}** has been **untrusted**.", ephemeral=True
+                    )
+                else:
+                    await inner.response.send_message("❌ Member not found.", ephemeral=True)
+
+            view = build_member_select("Choose a member to untrust…", options, do_untrust)
+            await interaction.response.send_message(
+                "Select a member to untrust:", view=view, ephemeral=True
+            )
+
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
@@ -799,63 +809,72 @@ class VoicePanelView(discord.ui.View):
             await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
 
-        async def do_untrust(inner: discord.Interaction, target: discord.Member):
-            if target:
-                await channel.set_permissions(target, overwrite=None)
-                await inner.response.send_message(
-                    f"⛔ **{target.display_name}** has been **untrusted**.", ephemeral=True
-                )
-            else:
-                await inner.response.send_message("❌ Member not found.", ephemeral=True)
-
-        view = build_member_select("Choose a member to untrust…", options, do_untrust)
-        await interaction.response.send_message(
-            "Select a member to untrust:", view=view, ephemeral=True
-        )
-
     @discord.ui.button(emoji="✔️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:unblock", row=2)
     async def unblock(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        banned = [
-            m for m in interaction.guild.members
-            if not m.bot
-            and channel.overwrites_for(m).connect is False
-        ]
-        if not banned:
-            return await interaction.response.send_message(
-                "❌ No banned members to unblock.", ephemeral=True
-            )
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
 
-        options = [
-            discord.SelectOption(
-                label=m.display_name[:100],
-                description=f"@{m.name}",
-                value=str(m.id),
-            )
-            for m in banned[:25]
-        ]
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
 
-        async def do_unblock(inner: discord.Interaction, target: discord.Member):
-            if target:
-                await channel.set_permissions(target, overwrite=None)
-                await inner.response.send_message(
-                    f"✔️ **{target.display_name}** has been **unblocked**.", ephemeral=True
+            if not channel:
+                return
+
+            banned = [
+                m for m in interaction.guild.members
+                if not m.bot
+                and channel.overwrites_for(m).connect is False
+            ]
+            if not banned:
+                return await interaction.response.send_message(
+                    "❌ No banned members to unblock.", ephemeral=True
                 )
-            else:
-                await inner.response.send_message("❌ Member not found.", ephemeral=True)
 
-        view = build_member_select("Choose a member to unblock…", options, do_unblock)
-        await interaction.response.send_message(
-            "Select a member to unblock:", view=view, ephemeral=True
-        )
+            options = [
+                discord.SelectOption(
+                    label=m.display_name[:100],
+                    description=f"@{m.name}",
+                    value=str(m.id),
+                )
+                for m in banned[:25]
+            ]
+
+            async def do_unblock(inner: discord.Interaction, target: discord.Member):
+                if target:
+                    await channel.set_permissions(target, overwrite=None)
+                    await inner.response.send_message(
+                        f"✔️ **{target.display_name}** has been **unblocked**.", ephemeral=True
+                    )
+                else:
+                    await inner.response.send_message("❌ Member not found.", ephemeral=True)
+
+            view = build_member_select("Choose a member to unblock…", options, do_unblock)
+            await interaction.response.send_message(
+                "Select a member to unblock:", view=view, ephemeral=True
+            )
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unblock - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
     @discord.ui.button(emoji="🔁", style=discord.ButtonStyle.secondary,
                        custom_id="panel:transfer", row=2)
