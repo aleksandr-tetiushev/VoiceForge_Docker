@@ -7,6 +7,8 @@ from discord.ext.commands.cooldowns import CooldownMapping
 from config import *
 from typing import TYPE_CHECKING
 from . import database_channel_operations as DB_CHANNEL_IO
+import traceback
+from logger import log_error , log_info
 
 if TYPE_CHECKING:
     from cogs.voice_manager import VoiceManager
@@ -14,6 +16,17 @@ if TYPE_CHECKING:
 def get_vm(bot: commands.Bot):
     return bot.cogs.get("VoiceManager")
 
+async def send(interaction:discord.Interaction, msg:str , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=ephemeral)
+        else:
+            await interaction.response.send_message(msg, ephemeral=ephemeral)
+
+async def send_embed(interaction:discord.Interaction, embed:discord.Embed , ephemeral:bool = True)-> None: # sends embed or send followup if response is already sent
+    if interaction.response.is_done():
+        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+    else:
+        await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
 
 # ──────────────────────────────────────────────
 #  MODALS
@@ -272,25 +285,25 @@ class VoicePanelView(discord.ui.View):
         owner = []
 
         for target, overwrite in channel.overwrites.items():
-                if isinstance(target,discord.Member):
-                    if (overwrite.connect is True and 
-                          overwrite.speak is True and 
-                          overwrite.stream is True and 
-                          overwrite.use_voice_activation is True and 
-                          overwrite.view_channel is True and
-                          overwrite.read_message_history is True): # making sure user have those permissiong given while voice channel creation
-                        
-                        owner.append(target)
+            
+            if isinstance(target,discord.Member):
+                if (overwrite.connect is True and 
+                      overwrite.speak is True and 
+                      overwrite.stream is True and 
+                      overwrite.use_voice_activation is True and 
+                      overwrite.view_channel is True and
+                      overwrite.read_message_history is True): # making sure user have those permissiong given while voice channel creation
+                    
+                    owner.append(target)
 
-                    elif (overwrite.connect is True and 
-                        overwrite.speak is True and 
-                        overwrite.stream is True and 
-                        overwrite.use_voice_activation is True and 
-                        overwrite.view_channel is True): # making sure user have permission given when trusted
-                        
-                        trusted.append(target)
-
-
+                elif (overwrite.connect is True and 
+                    overwrite.speak is True and 
+                    overwrite.stream is True and 
+                    overwrite.use_voice_activation is True and 
+                    overwrite.view_channel is True): # making sure user have permission given when trusted
+                    
+                    trusted.append(target)
+        
         return trusted , owner
     
     def _user_in_voice_channel_check(self,interaction:discord.Interaction) -> bool: # checks if user is in voice channel or not
@@ -313,90 +326,49 @@ class VoicePanelView(discord.ui.View):
         
         return False
 
-
-    def _is_in_temp_category(self, interaction: discord.Interaction) -> bool:
-        """
-        Returns True if the user's current voice channel is inside
-        the temp voice category — meaning they ARE in a temp VC
-        but the bot lost its data after a restart.
-        """
-        vm = get_vm(interaction.client)
-        if vm is None:
-            return False
-        voice = interaction.user.voice
-        if not voice or not voice.channel:
-            return False
-        return voice.channel.category_id == vm.bot.category_id
-
-    def _get_channel(self, interaction: discord.Interaction):
-        """
-        Returns (vm, channel).
-        channel is None if user is not in a tracked temp VC.
-        """
-        vm = get_vm(interaction.client)
-        if vm is None:
-            return None, None
-        voice = interaction.user.voice
-        if not voice or not voice.channel:
-            return vm, None
-        if voice.channel.id not in vm.channel_to_owners:
-            return vm, None
-        return vm, voice.channel
-
-    async def _owner_check(self, interaction: discord.Interaction):
-        vm = get_vm(interaction.client)
-
-        voice = interaction.user.voice
-        if not voice or not voice.channel:
-            await interaction.response.send_message(
-                "❌ You must be in your temp voice channel.", ephemeral=True
-            )
-            return None, None
-
-        channel = voice.channel
-
-        # In temp category but no ownership record — tell them to claim
-        if (
-            vm is not None
-            and channel.category_id == vm.bot.category_id
-            and channel.id not in vm.channel_to_owners
-        ):
-            await interaction.response.send_message(
-                "⚠️ This channel has no owner. Use the **Claim** button to become the owner first.",
-                ephemeral=True,
-            )
-            return None, None
-
-        # Not a tracked temp VC at all
-        if vm is None or channel.id not in vm.channel_to_owners:
-            await interaction.response.send_message(
-                "❌ You must be in your temp voice channel.", ephemeral=True
-            )
-            return None, None
-
-        # In a tracked temp VC but not the owner
-        if not self._is_owner(vm, interaction, channel):
-            await interaction.response.send_message(
-                "❌ Only the **channel owner** can use this.", ephemeral=True
-            )
-            return None, None
-
-        return vm, channel
-
-
     @discord.ui.button(emoji="🔒", style=discord.ButtonStyle.secondary,
                        custom_id="panel:lock", row=0)
     async def lock(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel 
+            everyone = interaction.guild.default_role
+            overwrite = channel.overwrites_for(everyone)
+
+            if overwrite.connect is False: # verifying if voice channel isnt locked already to avoid unnecessary api calls
+                await send(interaction=interaction,msg="Voice channel is already locked.")
+                return        
+
+            overwrite.connect = False
+            await channel.set_permissions(everyone, overwrite=overwrite)
+
+            await send(interaction=interaction,msg="🔒 Channel **locked**.")
             return
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : lock - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        ow = channel.overwrites_for(interaction.guild.default_role)
-        ow.connect = False
-        await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
-        await interaction.response.send_message("🔒 Channel **locked**.", ephemeral=True)
 
     @discord.ui.button(emoji="🔓", style=discord.ButtonStyle.secondary,
                        custom_id="panel:unlock", row=1)
