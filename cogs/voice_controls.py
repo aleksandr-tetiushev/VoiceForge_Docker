@@ -724,9 +724,6 @@ class VoiceControls(commands.Cog):
                     if member.id == interaction.user.id: # its not possible for owner of voice channel to be added as trusted but still checking it doesnt add owner in trusted member list
                         continue
                     
-                    if member.bot:
-                        continue
-                    
                     if (overwrite.connect is True and 
                         overwrite.speak is True and 
                         overwrite.stream is True and 
@@ -798,9 +795,6 @@ class VoiceControls(commands.Cog):
             untrusted = []
 
             for member in members:
-
-                if member.bot:
-                    continue
 
                 if member.id == interaction.user.id:
                     continue

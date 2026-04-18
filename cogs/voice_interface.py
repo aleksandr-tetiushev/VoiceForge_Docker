@@ -136,10 +136,7 @@ class TrustUserSelect(discord.ui.View):
             return await interaction.response.send_message(
                 "❌ Member not found in this server.", ephemeral=True
             )
-        if target.bot:
-            return await interaction.response.send_message(
-                "❌ You cannot trust bots.", ephemeral=True
-            )
+        
         if target.id == interaction.user.id:
             return await interaction.response.send_message(
                 "❌ You already own this channel.", ephemeral=True
@@ -731,6 +728,7 @@ class VoicePanelView(discord.ui.View):
 
             if not channel:
                 return
+            
             await interaction.response.send_message(
                 "✅ Select a member to trust:",
                 view=TrustUserSelect(channel),
@@ -747,33 +745,59 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="⛔", style=discord.ButtonStyle.secondary,
                        custom_id="panel:untrust", row=1)
     async def untrust(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            if not channel:
+                return
+
+            trusted = [
+                m for m in interaction.guild.members
+                if m.id != interaction.user.id
+                and channel.overwrites_for(m).connect is True 
+                and channel.overwrites_for(m).speak is True
+                and channel.overwrites_for(m).stream is True
+                and channel.overwrites_for(m).use_voice_activation is True
+                and channel.overwrites_for(m).view_channel is True
+            ]
+            if not trusted:
+                return await interaction.response.send_message(
+                    "❌ No trusted members found.", ephemeral=True
+                )
+
+            options = [
+                discord.SelectOption(
+                    label=m.display_name[:100],
+                    description=f"@{m.name}",
+                    value=str(m.id),
+                )
+                for m in trusted[:25]
+            ]
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : untrust - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
-
-        trusted = [
-            m for m in interaction.guild.members
-            if not m.bot
-            and m.id != interaction.user.id
-            and channel.overwrites_for(m).connect is True
-        ]
-        if not trusted:
-            return await interaction.response.send_message(
-                "❌ No trusted members found.", ephemeral=True
-            )
-
-        options = [
-            discord.SelectOption(
-                label=m.display_name[:100],
-                description=f"@{m.name}",
-                value=str(m.id),
-            )
-            for m in trusted[:25]
-        ]
 
         async def do_untrust(inner: discord.Interaction, target: discord.Member):
             if target:
