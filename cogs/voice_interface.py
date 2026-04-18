@@ -5,16 +5,14 @@ from discord import app_commands
 import config
 from discord.ext.commands.cooldowns import CooldownMapping
 from config import *
-from typing import TYPE_CHECKING
+from typing import Optional
 from . import database_channel_operations as DB_CHANNEL_IO
 import traceback
 from logger import log_error , log_info
 
-if TYPE_CHECKING:
-    from cogs.voice_manager import VoiceManager
 
-def get_vm(bot: commands.Bot):
-    return bot.cogs.get("VoiceManager")
+
+
 
 async def send(interaction:discord.Interaction, msg:str , ephemeral:bool = True)-> None: # sends message or send followup if response is already sent
         if interaction.response.is_done():
@@ -373,44 +371,122 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🔓", style=discord.ButtonStyle.secondary,
                        custom_id="panel:unlock", row=1)
     async def unlock(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel:discord.VoiceChannel = interaction.user.voice.channel
+
+            if not channel:
+                return
+            
+            ow = channel.overwrites_for(interaction.guild.default_role)
+            if ow.connect is not False:
+                await send(interaction=interaction,msg=f"Voice channel is already unlocked.")
+                return
+            ow.connect = None # reset to guild default
+            await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
+            await send(interaction=interaction,msg="🔓 Channel **unlocked**.")
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : unlock - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
-        ow = channel.overwrites_for(interaction.guild.default_role)
-        ow.connect = True
-        await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
-        await interaction.response.send_message("🔓 Channel **unlocked**.", ephemeral=True)
 
     @discord.ui.button(emoji="🙈", style=discord.ButtonStyle.secondary,
                        custom_id="panel:hide", row=0)
     async def hide(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            ow = channel.overwrites_for(interaction.guild.default_role)
+            ow.view_channel = False
+            ow.connect = False
+            await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
+            await send(interaction=interaction,msg="🙈 Channel **hidden**.")
             return
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
+        
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : hide - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        ow = channel.overwrites_for(interaction.guild.default_role)
-        ow.view_channel = False
-        await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
-        await interaction.response.send_message("🙈 Channel **hidden**.", ephemeral=True)
 
     @discord.ui.button(emoji="👁️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:show", row=0)
     async def show(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+            
+            ow = channel.overwrites_for(interaction.guild.default_role)
+            ow.view_channel = None
+            ow.connect = None
+            await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
+            await send(interaction=interaction,msg="👁️ Channel **visible**.")
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : show - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
-        ow = channel.overwrites_for(interaction.guild.default_role)
-        ow.view_channel = True
-        await channel.set_permissions(interaction.guild.default_role, overwrite=ow)
-        await interaction.response.send_message("👁️ Channel **visible**.", ephemeral=True)
 
     @discord.ui.button(emoji="✏️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:rename", row=0)
