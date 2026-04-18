@@ -344,6 +344,8 @@ class VoicePanelView(discord.ui.View):
                 return
             
             channel = interaction.user.voice.channel 
+            if not channel:
+                return
             everyone = interaction.guild.default_role
             overwrite = channel.overwrites_for(everyone)
 
@@ -431,6 +433,8 @@ class VoicePanelView(discord.ui.View):
                 return
             
             channel = interaction.user.voice.channel
+            if not channel:
+                return
 
             ow = channel.overwrites_for(interaction.guild.default_role)
             ow.view_channel = False
@@ -470,6 +474,9 @@ class VoicePanelView(discord.ui.View):
                 return
             
             channel = interaction.user.voice.channel
+
+            if not channel:
+                return
             
             ow = channel.overwrites_for(interaction.guild.default_role)
             ow.view_channel = None
@@ -507,6 +514,9 @@ class VoicePanelView(discord.ui.View):
                 return
         
             channel =  interaction.user.voice.channel
+
+            if not channel:
+                return
 
             retry_after = self._cooldowns.check("rename",1,float(RENAME_COOLDOWN),interaction)
 
@@ -547,6 +557,9 @@ class VoicePanelView(discord.ui.View):
             
             channel = interaction.user.voice.channel
 
+            if not channel:
+                return
+
             await interaction.response.send_modal(LimitModal(channel))
 
         except Exception as e:
@@ -580,6 +593,9 @@ class VoicePanelView(discord.ui.View):
             
             channel = interaction.user.voice.channel
 
+            if not channel:
+                return
+
             await interaction.response.send_message("📨 Select a member to invite:",view=InviteUserSelect(channel),ephemeral=True)
 
         except Exception as e:
@@ -592,44 +608,62 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="👢", style=discord.ButtonStyle.secondary,
                        custom_id="panel:kick", row=1)
     async def kick(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        members = [m for m in channel.members if m.id != interaction.user.id]
-        if not members:
-            return await interaction.response.send_message(
-                "❌ No other members in your channel.", ephemeral=True
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            if not channel:
+                return
+
+            members = [m for m in channel.members if m.id != interaction.user.id]
+            if not members:
+                await send(interaction=interaction,msg="❌ No other members in your channel.")
+                return
+
+            options = [
+                discord.SelectOption(
+                    label=m.display_name[:100],
+                    description=f"@{m.name}",
+                    value=str(m.id),
+                )
+                for m in members
+            ]
+
+            async def do_kick(inner: discord.Interaction, target: discord.Member):
+                if target and target.voice and target.voice.channel == channel:
+                    await target.move_to(None)
+                    await send(interaction=inner,msg=f"👢 **{target.display_name}** was kicked.")
+                else:
+                    await send(interaction=inner,msg="❌ Member is no longer in your channel.")
+
+            view = build_member_select("Choose a member to kick…", options, do_kick)
+            await interaction.response.send_message(
+                "Select a member to kick:", view=view, ephemeral=True
             )
 
-        options = [
-            discord.SelectOption(
-                label=m.display_name[:100],
-                description=f"@{m.name}",
-                value=str(m.id),
-            )
-            for m in members
-        ]
-
-        async def do_kick(inner: discord.Interaction, target: discord.Member):
-            if target and target.voice and target.voice.channel == channel:
-                await target.move_to(None)
-                await inner.response.send_message(
-                    f"👢 **{target.display_name}** was kicked.", ephemeral=True
-                )
-            else:
-                await inner.response.send_message(
-                    "❌ Member is no longer in your channel.", ephemeral=True
-                )
-
-        view = build_member_select("Choose a member to kick…", options, do_kick)
-        await interaction.response.send_message(
-            "Select a member to kick:", view=view, ephemeral=True
-        )
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : kick - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
     @discord.ui.button(emoji="🚫", style=discord.ButtonStyle.secondary,
                        custom_id="panel:ban", row=2)
