@@ -708,18 +708,41 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="✅", style=discord.ButtonStyle.secondary,
                        custom_id="panel:trust", row=1)
     async def trust(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            if not channel:
+                return
+            await interaction.response.send_message(
+                "✅ Select a member to trust:",
+                view=TrustUserSelect(channel),
+                ephemeral=True,
+            )
+
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : trust - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-        await interaction.response.send_message(
-            "✅ Select a member to trust:",
-            view=TrustUserSelect(channel),
-            ephemeral=True,
-        )
 
     @discord.ui.button(emoji="⛔", style=discord.ButtonStyle.secondary,
                        custom_id="panel:untrust", row=1)
