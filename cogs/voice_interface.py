@@ -879,81 +879,102 @@ class VoicePanelView(discord.ui.View):
     @discord.ui.button(emoji="🔁", style=discord.ButtonStyle.secondary,
                        custom_id="panel:transfer", row=2)
     async def transfer(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            if not channel:
+                return
         
-        retry_after = self._cooldowns.check("transfer",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
-        
-        if retry_after:
-            await self._cooldown_response(interaction,retry_after)
-            return
+            retry_after = self._cooldowns.check("transfer",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
 
-        members = [m for m in channel.members if m.id != interaction.user.id]
-        if not members:
-            return await interaction.response.send_message(
-                "❌ No other members in your channel to transfer to.", ephemeral=True
-            )
+            if retry_after:
+                await self._cooldown_response(interaction,retry_after)
+                return
 
-        options = [
-            discord.SelectOption(
-                label=m.display_name[:100],
-                description=f"@{m.name}",
-                value=str(m.id),
-            )
-            for m in members
-        ]
-
-        async def do_transfer(inner: discord.Interaction, target: discord.Member):
-            if target:
-                old_owner_id = vm.channel_to_owners[channel.id]
-                vm.channel_to_owners[channel.id] = target.id
-                vm.owners_to_channel.pop(old_owner_id, None)
-                vm.owners_to_channel[target.id] = channel.id
-
-                owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
-                    connect=True,
-                    read_message_history=True,
-                    speak=True,
-                    stream=True,
-                    use_voice_activation=True,
-                    view_channel=True
+            members = [m for m in channel.members if m.id != interaction.user.id]
+            if not members:
+                return await interaction.response.send_message(
+                    "❌ No other members in your channel to transfer to.", ephemeral=True
                 )
 
-                overwrites = {
-                    target : owner_overwrite,
-                    interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+            options = [
+                discord.SelectOption(
+                    label=m.display_name[:100],
+                    description=f"@{m.name}",
+                    value=str(m.id),
+                )
+                for m in members if not m.bot
+            ]
+
+            async def do_transfer(inner: discord.Interaction, target: discord.Member):
+                if target:
+                    edit_status = DB_CHANNEL_IO.channel_edit(server_id=inner.user.voice.channel.guild.id,channel_id=inner.user.voice.channel.id,new_owner_id=target.id)
+                    if not edit_status:
+                        return
+
+                    owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
                         connect=True,
-                        view_channel=True,
-                        send_messages=True
+                        read_message_history=True,
+                        speak=True,
+                        stream=True,
+                        use_voice_activation=True,
+                        view_channel=True
                     )
-                }
 
-                channel_edit = {
-                    'overwrites' : overwrites,
-                    'user_limit' : 0
-                }
+                    overwrites = {
+                        target : owner_overwrite,
+                        interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+                            connect=True,
+                            view_channel=True,
+                            send_messages=True
+                        )
+                    }
 
-                if not channel.name == f"{target.display_name}'s VC":
-                    channel_edit['name'] = f"{target.display_name}'s VC"
+                    channel_edit = {
+                        'overwrites' : overwrites,
+                        'user_limit' : 0
+                    }
 
-                await channel.edit(**channel_edit) # editing channel with one api call
-                
-                    
-                await inner.response.send_message(
-                    f"🔁 Ownership transferred to **{target.display_name}**.", ephemeral=True
-                )
-            else:
-                await inner.response.send_message("❌ Member not found.", ephemeral=True)
+                    if not channel.name == f"{target.display_name}'s VC":
+                        channel_edit['name'] = f"{target.display_name}'s VC"
 
-        view = build_member_select("Choose new owner…", options, do_transfer)
-        await interaction.response.send_message(
-            "Select new channel owner:", view=view, ephemeral=True
-        )
+                    await channel.edit(**channel_edit) # editing channel with one api call
+
+
+                    await inner.response.send_message(
+                        f"🔁 Ownership transferred to **{target.display_name}**.", ephemeral=True
+                    )
+                else:
+                    await inner.response.send_message("❌ Member not found.", ephemeral=True)
+
+            view = build_member_select("Choose new owner…", options, do_transfer)
+            await interaction.response.send_message(
+                "Select new channel owner:", view=view, ephemeral=True
+            )
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : transfer - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
 
 
