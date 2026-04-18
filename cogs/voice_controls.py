@@ -1244,6 +1244,43 @@ class VoiceControls(commands.Cog):
             await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
             return
 
+    @app_commands.command(name="setup",description="Shows instructions to setup bot in server.")
+    async def server_setup(self,interaction:discord.Interaction):
+        try:
+            if not self.is_guild(interaction=interaction):
+                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                return
+            await interaction.response.defer()
+            
+            if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
+                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                return
+            
+            if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
+                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                return
+            embed = discord.Embed(
+                title=f"Thanks for choosing {self.bot.user.name}!",
+                description="To setup this bot in server you need to use 1 commands:",
+                color=discord.Color.blurple()
+                )
+
+            embed.add_field(
+                name="`/register` <voice channel>",
+                value=" Note voice channel must have a category with everyone's default permissions else bot won't function properly.",
+                inline=False
+            )
+
+            embed.set_footer(text="In case of any error while using /register please run /unregister once.")
+
+            await self.send_embed(interaction=interaction,embed=embed,ephemeral=False)
+            return
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : bot_setup - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
+            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            return
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
     await bot.add_cog(VoiceControls(bot))
