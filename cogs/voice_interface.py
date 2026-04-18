@@ -976,153 +976,149 @@ class VoicePanelView(discord.ui.View):
             await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
 
-
-
     @discord.ui.button(emoji="👑", style=discord.ButtonStyle.secondary,custom_id="panel:claim", row=2)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
-            return
-            
-        vm = get_vm(interaction.client)
+        try:
+            if not self._is_guild(interaction):
+                await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+                return
 
-        voice = interaction.user.voice
-        if not voice or not voice.channel:
-            return await interaction.response.send_message(
-                "❌ You must be in a temp voice channel.", ephemeral=True
-            )
-        
-        retry_after = self._cooldowns.check("claim",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
-        
-        if retry_after:
-            await self._cooldown_response(interaction,retry_after)
-            return
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
 
-        channel = voice.channel
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
-        owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
-            connect=True,
-            read_message_history=True,
-            speak=True,
-            stream=True,
-            use_voice_activation=True,
-            view_channel=True
-        )
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+    
+            channel = interaction.user.voice.channel
 
-        overwrites = {
-            interaction.user : owner_overwrite,
-            interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+            owner = interaction.guild.get_member(voice_channel.owner_id)
+    
+            owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
                 connect=True,
-                view_channel=True,
-                send_messages=True
+                read_message_history=True,
+                speak=True,
+                stream=True,
+                use_voice_activation=True,
+                view_channel=True
             )
-        }
-
-
-        # In temp category but no ownership record — register them as owner directly
-        if (
-            vm is not None
-            and channel.category_id == vm.bot.category_id
-            and channel.id not in vm.channel_to_owners
-        ):     
-            vm.channel_to_owners[channel.id] = interaction.user.id
-            vm.owners_to_channel[interaction.user.id] = channel.id
-
-            channel_edit = {
-                'overwrites' : overwrites,
-                'user_limit' : 0
+    
+            overwrites = {
+                interaction.user : owner_overwrite,
+                interaction.client.user: discord.PermissionOverwrite( # bot's permissions 
+                    connect=True,
+                    view_channel=True,
+                    send_messages=True
+                )
             }
 
+            if interaction.user.id == owner.id:
+                await send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
+                return
+            
+            owner_still_here = (
+                owner
+                and owner.voice
+                and owner.voice.channel
+                and owner.voice.channel.id == channel.id
+            )
+            if owner_still_here:
+                return await interaction.response.send_message(
+                    "❌ The owner is still in the channel.", ephemeral=True
+                )
+    
+            channel_edit = {
+                'overwrites' : overwrites,
+                'user_limit' : 0 # reset limit
+            }
+    
             if not channel.name == f"{interaction.user.display_name}'s VC":
                 channel_edit['name'] = f"{interaction.user.display_name}'s VC"
-
+    
+            edit_status = DB_CHANNEL_IO.channel_edit(server_id=interaction.guild.id,channel_id=interaction.user.voice.channel.id,new_owner_id=interaction.user.id)
+            if not edit_status:
+                await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                return
+            
             await channel.edit(**channel_edit) # editing channel with one api call
-
-            return await interaction.response.send_message(
+            
+            retry_after = self._cooldowns.check("claim",1,float(CLAIM_TRANSFER_COOLDOWN),interaction)
+            
+            if retry_after:
+                await self._cooldown_response(interaction,retry_after)
+                return
+            
+            await interaction.response.send_message(
                 "👑 You have **claimed** this channel!", ephemeral=True
             )
 
-        # Not a temp VC at all
-        if vm is None or channel.id not in vm.channel_to_owners:
-            return await interaction.response.send_message(
-                "❌ You must be in a temp voice channel.", ephemeral=True
-            )
-
-        current_owner_id = vm.channel_to_owners.get(channel.id)
-
-        # Already the owner
-        if current_owner_id == interaction.user.id:
-            return await interaction.response.send_message(
-                "❌ You already own this channel.", ephemeral=True
-            )
-
-        # Owner is still in the channel
-        current_owner = interaction.guild.get_member(current_owner_id)
-        owner_still_here = (
-            current_owner
-            and current_owner.voice
-            and current_owner.voice.channel
-            and current_owner.voice.channel.id == channel.id
-        )
-        if owner_still_here:
-            return await interaction.response.send_message(
-                "❌ The owner is still in the channel.", ephemeral=True
-            )
-
-        # Transfer ownership
-        vm.channel_to_owners[channel.id] = interaction.user.id
-        vm.owners_to_channel.pop(current_owner_id, None)
-        vm.owners_to_channel[interaction.user.id] = channel.id
-
-
-        channel_edit = {
-            'overwrites' : overwrites,
-            'user_limit' : 0 # reset limit
-        }
-
-        if not channel.name == f"{interaction.user.display_name}'s VC":
-            channel_edit['name'] = f"{interaction.user.display_name}'s VC"
-
-        await channel.edit(**channel_edit) # editing channel with one api call
-        
-        await interaction.response.send_message(
-            "👑 You have **claimed** this channel!", ephemeral=True
-        )
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : claim - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            return
 
     @discord.ui.button(emoji="🗑️", style=discord.ButtonStyle.secondary,
                        custom_id="panel:delete", row=2)
     async def delete(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self._is_guild(interaction):
-            await interaction.response.send_message("❌ This command is works in server only",ephemeral=True)
+        try:
+            if not self._is_guild(interaction):
+                await send(interaction=interaction,msg=f"❌ This command is works in server only")
+                return
+            
+            if not self._user_in_voice_channel_check(interaction):
+                await send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                return
+
+            voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
+
+            if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
+                await send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                return
+
+            if not self._is_owner(interaction=interaction):
+                await send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                return
+            
+            channel = interaction.user.voice.channel
+
+            if not channel:
+                return
+
+            class ConfirmView(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+
+                @discord.ui.button(label="Yes, delete it", style=discord.ButtonStyle.danger)
+                async def confirm(self, inner: discord.Interaction, btn: discord.ui.Button):
+                    delete_status = DB_CHANNEL_IO.channel_delete(server_id=inner.guild_id,channel_id=inner.user.voice.channel.id)
+                    if not delete_status:
+                        return
+                    await channel.delete()
+                    await inner.response.send_message("🗑️ Channel deleted.", ephemeral=True)
+                    self.stop()
+
+                @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+                async def cancel(self, inner: discord.Interaction, btn: discord.ui.Button):
+                    await inner.response.send_message("❌ Cancelled.", ephemeral=True)
+                    self.stop()
+
+            await interaction.response.send_message(
+                "⚠️ Are you sure you want to **delete** your channel? This cannot be undone.",
+                view=ConfirmView(),
+                ephemeral=True,
+            )
+        
+        except Exception as e:
+            exception_traceback = traceback.format_exc()
+            error_name = type(e).__name__
+            log_error(message=f"Location : delete - file : voice_interface.py : Error Name - {error_name}",exc_info=exception_traceback)
+            await send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
             return
-
-        vm, channel = await self._owner_check(interaction)
-        if not channel:
-            return
-
-        class ConfirmView(discord.ui.View):
-            def __init__(self):
-                super().__init__(timeout=15)
-
-            @discord.ui.button(label="Yes, delete it", style=discord.ButtonStyle.danger)
-            async def confirm(self, inner: discord.Interaction, btn: discord.ui.Button):
-                owner_id = vm.channel_to_owners.pop(channel.id, None)
-                if owner_id:
-                    vm.owners_to_channel.pop(owner_id, None)
-                await channel.delete()
-                await inner.response.send_message("🗑️ Channel deleted.", ephemeral=True)
-                self.stop()
-
-            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
-            async def cancel(self, inner: discord.Interaction, btn: discord.ui.Button):
-                await inner.response.send_message("❌ Cancelled.", ephemeral=True)
-                self.stop()
-
-        await interaction.response.send_message(
-            "⚠️ Are you sure you want to **delete** your channel? This cannot be undone.",
-            view=ConfirmView(),
-            ephemeral=True,
-        )
 
 
 # ────────────────INTERACTIVE PANEL────────────────
