@@ -1,8 +1,6 @@
 services:
   voiceforge:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: python:3.12-slim
 
     container_name: voiceforge
 
@@ -12,10 +10,27 @@ services:
       VOICE_BOT_TOKEN: "${VOICE_BOT_TOKEN}"
       SERVER_DB_NAME: "/data/discord_server.db"
       CHANNEL_DB_NAME: "/data/discord_channel.db"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
 
     volumes:
       - voiceforge_data:/data
       - voiceforge_logs:/app/voiceforge/Logs
+
+    working_dir: /app
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        apt-get update &&
+        apt-get install -y --no-install-recommends git &&
+        rm -rf /var/lib/apt/lists/* &&
+        rm -rf /app/voiceforge &&
+        git clone --depth 1 https://github.com/code-1py/VoiceForge.git /app/voiceforge &&
+        cd /app/voiceforge &&
+        pip install --no-cache-dir discord.py python-dotenv pydantic &&
+        python main.py
 
 volumes:
   voiceforge_data:
