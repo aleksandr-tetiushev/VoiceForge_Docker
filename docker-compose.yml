@@ -1,0 +1,20 @@
+services:
+  voiceforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: voiceforge
+
+    restart: unless-stopped
+
+    environment:
+      VOICE_BOT_TOKEN: "${VOICE_BOT_TOKEN}"
+      SERVER_DB_NAME: "/data/discord_server.db"
+      CHANNEL_DB_NAME: "/data/discord_channel.db"
+
+    volumes:
+      - voiceforge_data:/data
+
+volumes:
+  voiceforge_data:
