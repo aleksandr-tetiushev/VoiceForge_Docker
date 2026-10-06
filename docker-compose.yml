@@ -15,6 +15,8 @@ services:
 
     volumes:
       - voiceforge_data:/data
+      - voiceforge_logs:/app/voiceforge/Logs
 
 volumes:
   voiceforge_data:
+  voiceforge_logs:
