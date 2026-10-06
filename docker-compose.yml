@@ -26,7 +26,7 @@ services:
         apt-get install -y --no-install-recommends git &&
         rm -rf /var/lib/apt/lists/* &&
         rm -rf /app/voiceforge &&
-        git clone --depth 1 https://github.com/code-1py/VoiceForge.git /app/voiceforge &&
+        git clone --depth 1 https://github.com/aleksandr-tetiushev/VoiceForge_Docker.git /app/voiceforge &&
         cd /app/voiceforge &&
         pip install --no-cache-dir discord.py python-dotenv pydantic &&
         python main.py
