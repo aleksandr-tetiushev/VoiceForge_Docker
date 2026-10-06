@@ -171,7 +171,7 @@ class VoiceControls(commands.Cog):
             }
 
             if not voice_channel.name == f"{interaction.user.display_name}'s VC": # renaming voice channel 
-                channel_edit['name'] = f"{interaction.user.display_name}'s VC"
+                channel_edit['name'] = f"🔥・костёр {interaction.user.display_name}"
 
             await voice_channel.edit(**channel_edit)
 
