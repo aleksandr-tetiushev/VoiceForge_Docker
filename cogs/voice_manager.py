@@ -124,7 +124,7 @@ class VoiceManager(commands.Cog):
             }
 
             new_channel: discord.VoiceChannel = await guild.create_voice_channel(
-                name=f"{member.display_name}'s VC",
+                name=f"🔥・костёр {member.display_name}",
                 category=category,
                 user_limit=4,
                 overwrites=overwrites
