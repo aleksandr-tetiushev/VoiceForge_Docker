@@ -10,13 +10,13 @@ class SyncCommands(commands.Cog):
     @commands.is_owner()
     async def sync_guild(self, ctx: commands.Context):
         if ctx.guild is None:
-            await ctx.reply("This command works in server only.")
+            await ctx.reply("Эта команда работает только на сервере.")
             return
 
         self.bot.tree.copy_global_to(guild=ctx.guild)
         synced = await self.bot.tree.sync(guild=ctx.guild)
 
-        embed = discord.Embed(title="Command Sync Status",description=f"`✅ Guild synced` : {len(synced)}",color=0x5865F2)
+        embed = discord.Embed(title="Статус синхронизации команд",description=f"`✅ Синхронизировано на сервере` : {len(synced)}",color=0x5865F2)
         await ctx.reply(embed=embed)
 
     @commands.command(name="syncglobal")
@@ -24,29 +24,29 @@ class SyncCommands(commands.Cog):
     async def sync_global(self, ctx: commands.Context):
         synced = await self.bot.tree.sync()
 
-        embed = discord.Embed(title="Command Sync Status",description=f"`🌍 Global synced` : {len(synced)}",color=0x5865F2)
+        embed = discord.Embed(title="Статус синхронизации команд",description=f"`🌍 Синхронизировано глобально` : {len(synced)}",color=0x5865F2)
         await ctx.reply(embed=embed)
 
     @commands.command(name="clearguild")
     @commands.is_owner()
     async def clearguild(self,ctx:commands.Context):
         if ctx.guild is None:
-            await ctx.reply(f"This command only works in servers.",mention_author=True)
+            await ctx.reply(f"Эта команда работает только на сервере.",mention_author=True)
             return
         self.bot.tree.clear_commands(guild=ctx.guild)
         await self.bot.tree.sync(guild=ctx.guild)
-        await ctx.reply("🧹 Cleared all guild slash commands.")
+        await ctx.reply("🧹 Все слэш-команды сервера очищены.")
     
     @commands.command(name="clearglobal")
     @commands.is_owner()
     async def clearglobal(self,ctx:commands.Context):
         self.bot.tree.clear_commands(guild=None)
         await self.bot.tree.sync()
-        await ctx.reply("⚠️ Cleared ALL global slash commands.")
+        await ctx.reply("⚠️ ВСЕ глобальные слэш-команды очищены.")
 
-    @app_commands.command(name="help", description="Shows a list of all available commands.")
+    @app_commands.command(name="help", description="Показать список всех доступных команд.")
     async def help(self, interaction: discord.Interaction):
-        embed = discord.Embed(title="Help Menu", color=discord.Color.blue())
+        embed = discord.Embed(title="Меню помощи", color=discord.Color.blue())
         # Iterate over all registered slash commands
         for command in self.bot.tree.walk_commands():
             # Add command name and description to the embed
@@ -54,9 +54,9 @@ class SyncCommands(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # The custom prefix help command to list slash commands
-    @commands.command(name="help", description="Shows this help message for slash commands.")
+    @commands.command(name="help", description="Показать справку по слэш-командам.")
     async def help_command(self,ctx: commands.Context):
-        embed = discord.Embed(title="Slash Commands Help",description="List of all available slash commands:",color=discord.Color.blurple())
+        embed = discord.Embed(title="Справка по слэш-командам",description="Список всех доступных слэш-команд:",color=discord.Color.blurple())
     
         # Iterate over all registered application commands using walk_commands()
         for command in self.bot.tree.walk_commands():
@@ -64,7 +64,7 @@ class SyncCommands(commands.Cog):
             # Check if the command is a top-level command and not part of a group
             if isinstance(command, app_commands.Command):
                 name = f"**/{command.name}**"
-                value = command.description if command.description else "No description provided."
+                value = command.description if command.description else "Описание отсутствует."
                 embed.add_field(name=name, value=value, inline=False)
         
         await ctx.send(embed=embed)
