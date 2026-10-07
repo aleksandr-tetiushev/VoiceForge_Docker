@@ -57,75 +57,75 @@ class VoiceControls(commands.Cog):
         return self.bot.get_cog("VoiceManager")
         
     # slash commands 
-    @app_commands.command(name="rename", description="Rename your voice channel (max 32 characters)")
+    @app_commands.command(name="rename", description="Переименовать голосовой канал (макс. 32 символа)")
     @app_commands.checks.cooldown(1, RENAME_COOLDOWN)
     async def rename(self, interaction: discord.Interaction, name: str):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command works in servers only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере.")
                 return
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
             name = name.strip()
     
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not name:
-                await self.send(interaction=interaction,msg="❌ Channel name cannot be empty.")
+                await self.send(interaction=interaction,msg="❌ Название канала не может быть пустым.")
                 return
             
             if len(name) > MAX_RENAME_CHARACTER_LIMIT:
-                await self.send(interaction=interaction,msg=f"❌ Channel names cannot exceed {MAX_RENAME_CHARACTER_LIMIT} characters.")
+                await self.send(interaction=interaction,msg=f"❌ Название канала не может быть длиннее {MAX_RENAME_CHARACTER_LIMIT} символов.")
                 return
     
             channel = interaction.user.voice.channel 
             
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
             
             if channel.name == name:
-                await self.send(interaction=interaction,msg="❌ The channel already has this name.")
+                await self.send(interaction=interaction,msg="❌ У канала уже такое название.")
                 return
             
             await channel.edit(name=name) #changing voice channel name
-            await self.send(interaction=interaction,msg="✅ Voice channel renamed successfully.")
+            await self.send(interaction=interaction,msg="✅ Голосовой канал успешно переименован.")
             return
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : rename - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
        
-    @app_commands.command(name="claim", description="claim current voice channel")
+    @app_commands.command(name="claim", description="Забрать текущий голосовой канал")
     @app_commands.checks.cooldown(1, CLAIM_TRANSFER_COOLDOWN)
     async def claim(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command works in servers only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере.")
                 return
             if not self.user_in_voice_channel_check(interaction): # checks if interaction happened in voice channel
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             db_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(db_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             owner_id = db_channel.owner_id
 
             if owner_id == interaction.user.id: # making sure the command isnt run by owner itself
-                await self.send(interaction=interaction,msg="❌ You are already the owner of this voice channel.")
+                await self.send(interaction=interaction,msg="❌ Вы уже владелец этого голосового канала.")
                 return
 
             owner = interaction.guild.get_member(owner_id) if owner_id else None 
@@ -133,17 +133,17 @@ class VoiceControls(commands.Cog):
             voice_channel = interaction.guild.get_channel(db_channel.channel_id)
 
             if not voice_channel or not owner:
-                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
                 return 
 
             if owner in voice_channel.members: # checking if owner is in channel or not
-                await self.send(interaction=interaction,msg="❌ The current owner is still in the voice channel.")
+                await self.send(interaction=interaction,msg="❌ Текущий владелец всё ещё в голосовом канале.")
                 return
 
            
             edit_status = DB_CHANNEL_IO.channel_edit(server_id=voice_channel.guild.id,channel_id=voice_channel.id,new_owner_id=interaction.user.id)
             if not edit_status:
-                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
                 return
 
             owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
@@ -170,71 +170,71 @@ class VoiceControls(commands.Cog):
                 'user_limit' : 0
             }
 
-            if not voice_channel.name == f"{interaction.user.display_name}'s VC": # renaming voice channel 
+            if not voice_channel.name == f"🔥・костёр {interaction.user.display_name}": # renaming voice channel 
                 channel_edit['name'] = f"🔥・костёр {interaction.user.display_name}"
 
             await voice_channel.edit(**channel_edit)
 
-            await self.send(interaction=interaction,msg="✅ You are now the owner of this voice channel.")
+            await self.send(interaction=interaction,msg="✅ Теперь вы владелец этого голосового канала.")
             return
         
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : claim - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="limit", description="Change Limit for current Voice Channel between 1-99 or enter 0 to reset limit")
+    @app_commands.command(name="limit", description="Изменить лимит участников канала (1–99) или 0, чтобы снять лимит")
     @app_commands.checks.cooldown(1,LIMIT_CHANGE_COOLDOWN)
     async def limit(self,interaction:discord.Interaction,limit:int):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not 0 <= limit <= 99: # making sure limit isnt more or less than limit by discord
-                await self.send(interaction=interaction,msg="❌ Limit must be between 1–99, or 0 to remove the limit.")
+                await self.send(interaction=interaction,msg="❌ Лимит должен быть от 1 до 99, либо 0, чтобы снять лимит.")
                 return
 
             channel = interaction.user.voice.channel 
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             if channel.user_limit == limit: # avoiding unnecessary api calls 
-               await self.send(interaction, "❌ This channel already has that limit.")
+               await self.send(interaction, "❌ У канала уже установлен такой лимит.")
                return
 
             if limit == 0: # vc limit reset
                 await channel.edit(user_limit=0)
-                await self.send(interaction=interaction,msg=f"✅ Voice channel limit removed.")
+                await self.send(interaction=interaction,msg=f"✅ Лимит голосового канала снят.")
                 return
 
             await channel.edit(user_limit=limit)
-            await self.send(interaction=interaction,msg=f"✅ Voice channel limit set to `{limit}`.")
+            await self.send(interaction=interaction,msg=f"✅ Лимит голосового канала установлен: `{limit}`.")
             return
         
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : limit - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
         
-    @app_commands.command(name="kick",description="Kick users from your voice channel (max 5 at a time)")
+    @app_commands.command(name="kick",description="Выгнать участников из вашего голосового канала (до 5 за раз)")
     @app_commands.checks.cooldown(1,KICK_MEMBER_COOLDOWN)
     async def kick(self,interaction:discord.Interaction,
                    member1: discord.Member,
@@ -246,21 +246,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
             
             members:discord.Member = [member1,member2,member3,member4,member5]
@@ -283,22 +283,22 @@ class VoiceControls(commands.Cog):
                 kicked_members.append(member.mention)
                 await asyncio.sleep(0.3)  # delay to avoid rate limit
 
-            value = "\n".join(kicked_members) if kicked_members else "No users were kicked."
+            value = "\n".join(kicked_members) if kicked_members else "Никого не выгнали."
 
             embed = discord.Embed(
-                title="Kicked Users",
-                description="The following users were kicked from your voice channel.",
+                title="Выгнанные участники",
+                description="Эти участники были выгнаны из вашего голосового канала.",
                 color=discord.Color.blurple()
             )
 
             embed.add_field(
-                name="Kicked Members:",
+                name="Выгнаны:",
                 value=value,
                 inline=False
             )
 
             embed.set_footer(
-                text="Note: If a user you entered does not appear above, they were either not in your voice channel or could not be removed."
+                text="Примечание: если указанного вами участника нет в списке выше, его не было в вашем канале или его не удалось отключить."
                 )
 
 
@@ -309,30 +309,30 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : kick - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
             
-    @app_commands.command(name="lock",description="Lock current voice channel")
+    @app_commands.command(name="lock",description="Закрыть текущий голосовой канал")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def lock(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel 
@@ -340,42 +340,42 @@ class VoiceControls(commands.Cog):
             overwrite = channel.overwrites_for(everyone)
 
             if overwrite.connect is False: # verifying if voice channel isnt locked already to avoid unnecessary api calls
-                await self.send(interaction, "Voice channel is already locked.")
+                await self.send(interaction, "Голосовой канал уже закрыт.")
                 return        
 
             overwrite.connect = False
             await channel.set_permissions(everyone, overwrite=overwrite)
-            await self.send(interaction, "🔒 Voice channel locked.")
+            await self.send(interaction, "🔒 Голосовой канал закрыт.")
             return
         
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : lock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="unlock",description="Unlock current voice channel")
+    @app_commands.command(name="unlock",description="Открыть текущий голосовой канал")
     @app_commands.checks.cooldown(1,LOCK_AND_UNLOCK_COOLDOWN)
     async def unlock(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel 
@@ -383,50 +383,50 @@ class VoiceControls(commands.Cog):
             overwrite = channel.overwrites_for(everyone)
 
             if overwrite.connect is True: # verifying if voice channel isnt unlocked already to avoid unnecessary api calls
-                await self.send(interaction, "Voice channel is already unlocked.")
+                await self.send(interaction, "Голосовой канал уже открыт.")
                 return        
 
             overwrite.connect = True
             await channel.set_permissions(everyone, overwrite=overwrite)
-            await self.send(interaction, "🔓 Voice channel unlocked.")
+            await self.send(interaction, "🔓 Голосовой канал открыт.")
             return
         
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : unlock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="delete",description="Delete current voice channel")
+    @app_commands.command(name="delete",description="Удалить текущий голосовой канал")
     @app_commands.checks.cooldown(1,DELETE_COOLDOWN) # cooldown in this command prevents user from using same command for 2 different voice channel withing small interval and prevents rate limitng
     async def delete(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
         
             try:
-                await interaction.channel.delete(reason=f"Delete command used.")
+                await interaction.channel.delete(reason=f"Использована команда удаления.")
                 delete_status = DB_CHANNEL_IO.channel_delete(server_id=interaction.channel.guild.id,channel_id=interaction.channel_id)
             except discord.NotFound:
                 delete_status = DB_CHANNEL_IO.channel_delete(server_id=interaction.channel.guild.id,channel_id=interaction.channel_id)
-                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
                 return
             
             return
@@ -435,10 +435,10 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : delete - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="invite",description="Send invite to user for your voice channel (max 5 invites at a time)")
+    @app_commands.command(name="invite",description="Отправить приглашение в ваш голосовой канал (до 5 за раз)")
     @app_commands.checks.cooldown(1,INVITE_COOLDOWN)
     async def invite(self, interaction: discord.Interaction,
                    member1: discord.Member,
@@ -449,21 +449,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
         
             members:set[discord.Member] = {member1,member2,member3,member4,member5}
@@ -489,7 +489,7 @@ class VoiceControls(commands.Cog):
                     if self.user_in_same_voice_channel(interaction, member):
                         continue
                     
-                    await member.send(f"You were invited to join **{channel.name}**.\n"f"Click to join: {invite_link}") 
+                    await member.send(f"Вас пригласили в канал **{channel.name}**.\n"f"Нажмите, чтобы зайти: {invite_link}") 
                     invite_sent.append(member.mention)
 
                 except discord.Forbidden:
@@ -497,16 +497,16 @@ class VoiceControls(commands.Cog):
 
             embed = discord.Embed(color=discord.Color.blurple())
 
-            value = "\n".join(invite_sent) if invite_sent else "No users were invited."
+            value = "\n".join(invite_sent) if invite_sent else "Никого не пригласили."
 
             embed.add_field(
-                name="✅ Invited:",
+                name="✅ Приглашены:",
                 value=value,
                 inline=False
             )
 
             embed.set_footer(
-                text="Note: If a user you entered does not appear above, the bot cannot invite them to this channel."
+                text="Примечание: если указанного вами участника нет в списке выше, бот не может пригласить его в этот канал."
             )
 
             await self.send_embed(interaction=interaction, embed=embed)
@@ -516,97 +516,97 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : invite - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 
-    @app_commands.command(name="hide",description="Hide current voice channel from everyone. Only trusted users can see.")
+    @app_commands.command(name="hide",description="Скрыть текущий голосовой канал от всех. Видеть его смогут только доверенные.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def hide(self, interaction: discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
             everyone = interaction.guild.default_role
 
             if not channel.permissions_for(everyone).view_channel:
-                await self.send(interaction, "❌ This voice channel is already hidden.")
+                await self.send(interaction, "❌ Этот голосовой канал уже скрыт.")
                 return
 
             overwrite = channel.overwrites_for(everyone)
             overwrite.view_channel = False
 
             await channel.set_permissions(everyone, overwrite=overwrite)
-            await self.send(interaction, "🚫 Voice channel hidden.")
+            await self.send(interaction, "🚫 Голосовой канал скрыт.")
 
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : hide - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 
-    @app_commands.command(name="unhide",description="Make the current voice channel visible to everyone.")
+    @app_commands.command(name="unhide",description="Сделать текущий голосовой канал видимым для всех.")
     @app_commands.checks.cooldown(1, HIDE_UNHIDE_COOLDOWN)
     async def unhide(self, interaction: discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
             everyone = interaction.guild.default_role
 
             if channel.permissions_for(everyone).view_channel:
-                await self.send(interaction, "❌ This voice channel is already visible.")
+                await self.send(interaction, "❌ Этот голосовой канал уже виден.")
                 return
 
             overwrite = channel.overwrites_for(everyone)
             overwrite.view_channel = None # restore default visibility according to server settings
 
             await channel.set_permissions(everyone, overwrite=overwrite)
-            await self.send(interaction, "👁️ Voice channel is now visible.")
+            await self.send(interaction, "👁️ Голосовой канал теперь виден.")
             return
     
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : unhide - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 
-    @app_commands.command(name="trust",description="Let selected users view and connect even if channel is locked or hidden (Max 5 at a time).")
+    @app_commands.command(name="trust",description="Дать выбранным участникам доступ, даже если канал закрыт или скрыт (до 5 за раз).")
     @app_commands.checks.cooldown(1, TRUST_UNTRUST_COOLDOWN)
     async def trust(self,interaction: discord.Interaction,
         member1: discord.Member,
@@ -618,21 +618,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -668,7 +668,7 @@ class VoiceControls(commands.Cog):
                 overwrites[member] = overwrite
                 trusted.append(member.mention)
 
-            view = "\n".join(trusted) if trusted else "No valid users were provided to trust."
+            view = "\n".join(trusted) if trusted else "Не указано ни одного подходящего участника."
 
             if trusted:
                 await channel.edit(overwrites=overwrites)
@@ -678,11 +678,11 @@ class VoiceControls(commands.Cog):
                 )
 
             embed.add_field(
-                name="✅ Trusted :",
+                name="✅ Доверенные:",
                 value=view,
                 inline=False
             )
-            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
+            embed.set_footer(text="Примечание: если указанного вами участника нет в списке выше, бот не может изменить его статус доверия в этом канале.")
             await self.send_embed(interaction=interaction,embed=embed)
             return
         
@@ -690,30 +690,30 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : trust - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="trusted",description="Shows trusted users.")
+    @app_commands.command(name="trusted",description="Показать доверенных участников.")
     @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def trusted(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -733,16 +733,16 @@ class VoiceControls(commands.Cog):
 
                         trusted_members.append(member)
 
-            value = "\n".join(member.mention for member in trusted_members) if trusted_members else "No trusted users found."
+            value = "\n".join(member.mention for member in trusted_members) if trusted_members else "Доверенных участников нет."
 
             embed = discord.Embed(
-                title="Trusted Users",
-                description="These are currently Trusted Users.",
+                title="Доверенные участники",
+                description="Сейчас доверенные участники:",
                 color=discord.Color.blurple()
                 )
 
             embed.add_field(
-                name="Currently Trusted :",
+                name="Сейчас доверены:",
                 value=value,
                 inline=False
             )
@@ -754,10 +754,10 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : trusted - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
  
-    @app_commands.command(name="untrust",description="Remove selected user from trusted user's list (Max 5 at a time).")
+    @app_commands.command(name="untrust",description="Убрать выбранных участников из списка доверенных (до 5 за раз).")
     @app_commands.checks.cooldown(1,TRUST_UNTRUST_COOLDOWN)
     async def untrust(self,interaction:discord.Interaction,
             member1: discord.Member,
@@ -770,21 +770,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -818,7 +818,7 @@ class VoiceControls(commands.Cog):
                 overwrites[member] = overwrite
                 untrusted.append(member.mention)
 
-            view = "\n".join(untrusted) if untrusted else "No valid users were provided to untrust."
+            view = "\n".join(untrusted) if untrusted else "Не указано ни одного подходящего участника."
 
             if untrusted:
                 await channel.edit(overwrites=overwrites)
@@ -828,12 +828,12 @@ class VoiceControls(commands.Cog):
                 )
 
             embed.add_field(
-                name="✅ Untrusted :",
+                name="✅ Доверие снято:",
                 value=view,
                 inline=False
             )
 
-            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot Trust/Untrust them in this channel.")
+            embed.set_footer(text="Примечание: если указанного вами участника нет в списке выше, бот не может изменить его статус доверия в этом канале.")
             await self.send_embed(interaction=interaction,embed=embed)
             return
         
@@ -841,10 +841,10 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : untrust - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="block",description="Kick and Block selected users from voice channel (Max 5 at a time).")
+    @app_commands.command(name="block",description="Выгнать и заблокировать выбранных участников в канале (до 5 за раз).")
     @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
     async def block(self,interaction:discord.Interaction,
                     member1: discord.Member,
@@ -857,21 +857,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -902,7 +902,7 @@ class VoiceControls(commands.Cog):
 
                 blocked.append(member.mention)
 
-            view = "\n".join(blocked) if blocked else "No valid users were provided to block."
+            view = "\n".join(blocked) if blocked else "Не указано ни одного подходящего участника."
 
             await channel.edit(overwrites=overwrites)
             embed = discord.Embed(
@@ -910,12 +910,12 @@ class VoiceControls(commands.Cog):
                 )
 
             embed.add_field(
-                name="✅ Blocked :",
+                name="✅ Заблокированы:",
                 value=view,
                 inline=False
             )
 
-            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
+            embed.set_footer(text="Примечание: если указанного вами участника нет в списке выше, бот не может заблокировать или разблокировать его в этом канале.")
             await self.send_embed(interaction=interaction,embed=embed)
             return
         
@@ -923,30 +923,30 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : block - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 
-    @app_commands.command(name="blocked",description="Shows blocked users.")
+    @app_commands.command(name="blocked",description="Показать заблокированных участников.")
     @app_commands.checks.cooldown(1,TRUSTED_BLOCKED_COOLDOWN)
     async def blocked(self,interaction:discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -963,16 +963,16 @@ class VoiceControls(commands.Cog):
                     if overwrite.view_channel is False and overwrite.connect is False:
                         blocked_members.append(member)
 
-            value = "\n".join(member.mention for member in blocked_members) if blocked_members else "No blocked users found."
+            value = "\n".join(member.mention for member in blocked_members) if blocked_members else "Заблокированных участников нет."
 
             embed = discord.Embed(
-                title="Blocked Users",
-                description="These users are currently blocked from the voice channel.",
+                title="Заблокированные участники",
+                description="Эти участники сейчас заблокированы в голосовом канале.",
                 color=discord.Color.blurple()
                 )
 
             embed.add_field(
-                name="Currently Blocked :",
+                name="Сейчас заблокированы:",
                 value=value,
                 inline=False
             )
@@ -984,10 +984,10 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : blocked - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="unblock",description="Remove selected users from the blocked users list (Max 5 at a time).")
+    @app_commands.command(name="unblock",description="Убрать выбранных участников из списка заблокированных (до 5 за раз).")
     @app_commands.checks.cooldown(1,BLOCK_UNBLOCK_COOLDOWN)
     async def unblock(self,interaction:discord.Interaction,
             member1: discord.Member,
@@ -1000,21 +1000,21 @@ class VoiceControls(commands.Cog):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
 
             channel = interaction.user.voice.channel
@@ -1043,7 +1043,7 @@ class VoiceControls(commands.Cog):
                 overwrites[member] = overwrite
                 unblocked.append(member.mention)
 
-            view = "\n".join(unblocked) if unblocked else "No valid users were provided to unblock."
+            view = "\n".join(unblocked) if unblocked else "Не указано ни одного подходящего участника."
 
             await channel.edit(overwrites=overwrites)
             embed = discord.Embed(
@@ -1051,12 +1051,12 @@ class VoiceControls(commands.Cog):
                 )
 
             embed.add_field(
-                name="✅ Unblocked Users:",
+                name="✅ Разблокированы:",
                 value=view,
                 inline=False
             )
 
-            embed.set_footer(text="Note: If a user you entered does not appear above, the bot cannot block/unblock them in this channel.")
+            embed.set_footer(text="Примечание: если указанного вами участника нет в списке выше, бот не может заблокировать или разблокировать его в этом канале.")
             await self.send_embed(interaction=interaction,embed=embed)
             return
         
@@ -1064,44 +1064,44 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : unblock - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="transfer",description="Transfer your voice channel to another member in the channel.")
+    @app_commands.command(name="transfer",description="Передать ваш голосовой канал другому участнику канала.")
     @app_commands.checks.cooldown(1,CLAIM_TRANSFER_COOLDOWN)
     async def transfer(self,interaction:discord.Interaction,new_owner:discord.Member):
         try:
             await interaction.response.defer(ephemeral=True)
             if not self.is_guild(interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command is works in server only")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере")
                 return
             
             if not self.user_in_voice_channel_check(interaction):
-                await self.send(interaction=interaction,msg="❌ You must be in a voice channel to use this command.")
+                await self.send(interaction=interaction,msg="❌ Для этого нужно находиться в голосовом канале.")
                 return
 
             voice_channel = DB_CHANNEL_IO.channel_read(server_id=interaction.guild_id,channel_id=interaction.user.voice.channel.id)
 
             if not isinstance(voice_channel,DB_CHANNEL_IO.Channel):
-                await self.send(interaction=interaction,msg=f"❌ This Command works in Temp voice channels only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только во временных голосовых каналах.")
                 return
 
             if not self.verify_ownership(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ You are not the owner of this voice channel.")
+                await self.send(interaction=interaction,msg=f"❌ Вы не владелец этого голосового канала.")
                 return
         
             channel = interaction.user.voice.channel
 
             if new_owner.bot:
-                await self.send(interaction,msg="❌ Invalid User.")
+                await self.send(interaction,msg="❌ Некорректный пользователь.")
                 return
 
             if interaction.user.id == new_owner.id:
-                await self.send(interaction=interaction,msg="❌ You cannot transfer the voice channel to yourself.")
+                await self.send(interaction=interaction,msg="❌ Нельзя передать канал самому себе.")
                 return
 
             if new_owner not in channel.members: # checking if new_owner is in channel or not
-                await self.send(interaction=interaction,msg="❌ Selected user is not in the voice channel.")
+                await self.send(interaction=interaction,msg="❌ Выбранного пользователя нет в голосовом канале.")
                 return
 
             owner_overwrite = discord.PermissionOverwrite( # permission overwrites for voice channel owner 
@@ -1127,151 +1127,151 @@ class VoiceControls(commands.Cog):
                 'user_limit' : 0
             }
 
-            if not channel.name == f"{new_owner.display_name}'s VC": # renaming voice channel 
-                channel_edit['name'] = f"{new_owner.display_name}'s VC"
+            if not channel.name == f"🔥・костёр {new_owner.display_name}": # renaming voice channel 
+                channel_edit['name'] = f"🔥・костёр {new_owner.display_name}"
 
             await channel.edit(**channel_edit)
             edit_status = DB_CHANNEL_IO.channel_edit(server_id=interaction.guild_id,channel_id=channel.id,new_owner_id=new_owner.id)
 
             if not edit_status:
                 log_error(message=f"Location : transfer - file : voice_controls.py - Error Name : edit_status error - description : reached till here because channel_read returned info but edit didnt worked")
-                await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
                 return
             
-            await self.send(interaction=interaction,msg=f"✅ Transferred voice channel ownership to {new_owner.mention}.")
+            await self.send(interaction=interaction,msg=f"✅ Владение голосовым каналом передано: {new_owner.mention}.")
             return
         
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : transfer - file : voice_controls.py : Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal server error occured please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
     
-    @app_commands.command(name="register",description="Registers voice channel and its category as creator channel and its category for temp channels.")
+    @app_commands.command(name="register",description="Назначить голосовой канал и его категорию для создания временных каналов.")
     async def register(self,interaction: discord.Interaction, channel: discord.VoiceChannel = None):
         try:
             if not self.is_guild(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере.")
                 return
             
             await interaction.response.defer()
             
             if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
-                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Доступ запрещён: команда доступна только администраторам сервера.",ephemeral=False)
                 return
             
             if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
-                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ У меня нет прав администратора. Выдайте моей роли права администратора, чтобы продолжить.",ephemeral=False)
                 return
     
             if not channel or not isinstance(channel,discord.VoiceChannel):
-                await self.send(interaction=interaction,msg=f"❌ Channel Invalid please pass a valid Voice Channel",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Неверный канал. Укажите голосовой канал.",ephemeral=False)
                 return
             
             if not channel.category: # fallback on no category
-                await self.send(interaction=interaction,msg=f"❌ This channel does not have any cateogry please pass channel with a valid category",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ У этого канала нет категории. Укажите канал, находящийся в категории.",ephemeral=False)
                 return
     
             server_object , read_status = DB_SERVER_IO.server_read(interaction=interaction)
     
             if read_status: # fallback on already registered
-                await self.send(interaction=interaction,msg=f"❌ This server already have registred creator channel please unregister that first using `/unregister`.")
+                await self.send(interaction=interaction,msg=f"❌ На этом сервере уже зарегистрирован канал-создатель. Сначала выполните `/unregister`.")
                 return
             
             write_status = DB_SERVER_IO.server_write(channel=channel)
     
             if not write_status:
-                await self.send(interaction=interaction,msg=f"❌ Failed To register channel please retry.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Не удалось зарегистрировать канал. Повторите попытку.",ephemeral=False)
                 return
             
             voice_manager = self.get_voice_manager()
             if not isinstance(voice_manager,VoiceManager):
                 DB_SERVER_IO.server_delete(interaction=interaction) # remove server entry
-                await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.",ephemeral=False)
                 return 
 
             voice_manager.creator_channels[channel.guild.id] = channel.id
             voice_manager.temp_channel_category[channel.guild.id] = channel.category.id # load current entry into voice_manager in-memory cache to start listening that channel also 
-            await self.send(interaction=interaction,msg=f"✅ Channel registred successfully.",ephemeral=False)
+            await self.send(interaction=interaction,msg=f"✅ Канал успешно зарегистрирован.",ephemeral=False)
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : register - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return 
         
-    @app_commands.command(name="unregister",description="Unregisters the registred voice channel from server config.")
+    @app_commands.command(name="unregister",description="Удалить зарегистрированный голосовой канал из настроек сервера.")
     async def unregister(self,interaction: discord.Interaction):
         try:
             if not self.is_guild(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере.")
                 return
             await interaction.response.defer()
             
             if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
-                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Доступ запрещён: команда доступна только администраторам сервера.",ephemeral=False)
                 return
             
             if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
-                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ У меня нет прав администратора. Выдайте моей роли права администратора, чтобы продолжить.",ephemeral=False)
                 return
             
             server_object , read_status = DB_SERVER_IO.server_read(interaction=interaction)
     
             if not read_status: # fallback on no entry
-                await self.send(interaction=interaction,msg=f"❌ This server don't have any registred creator channel please register first using `/register`.")
+                await self.send(interaction=interaction,msg=f"❌ На этом сервере нет зарегистрированного канала-создателя. Сначала выполните `/register`.")
                 return
             
             write_status = DB_SERVER_IO.server_delete(interaction=interaction)
     
             if not write_status:
-                await self.send(interaction=interaction,msg=f"❌ Failed To delete channel please retry.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Не удалось удалить канал. Повторите попытку.",ephemeral=False)
                 return
             
             voice_manager = self.get_voice_manager()
             if not isinstance(voice_manager,VoiceManager):
-                await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.",ephemeral=False)
                 return 
             
             voice_manager.temp_channel_category.pop(interaction.guild_id,None)
             voice_manager.creator_channels.pop(interaction.guild_id,None) # remove from in-memory cache
-            await self.send(interaction=interaction,msg=f"✅ Channel unregistred successfully {self.bot.user.mention} will still track existing temp voice channels.",ephemeral=False)
+            await self.send(interaction=interaction,msg=f"✅ Регистрация канала снята. {self.bot.user.mention} продолжит отслеживать уже существующие временные каналы.",ephemeral=False)
         except Exception as e:
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : unregister - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 
-    @app_commands.command(name="setup",description="Shows instructions to setup bot in server.")
+    @app_commands.command(name="setup",description="Показать инструкцию по настройке бота на сервере.")
     async def server_setup(self,interaction:discord.Interaction):
         try:
             if not self.is_guild(interaction=interaction):
-                await self.send(interaction=interaction,msg=f"❌ This command works inside server only.")
+                await self.send(interaction=interaction,msg=f"❌ Эта команда работает только на сервере.")
                 return
             await interaction.response.defer()
             
             if not interaction.user.guild_permissions.administrator: # fallback if user is not admin of server
-                await self.send(interaction=interaction,msg=f"❌ Permission Denied this command is avaliable to server administrators only.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ Доступ запрещён: команда доступна только администраторам сервера.",ephemeral=False)
                 return
             
             if not interaction.guild.me.guild_permissions.administrator: # fall back if bot dont have admin permission in server
-                await self.send(interaction=interaction,msg=f"❌ I dont have administrator permission in this channel please grant my role administrator permissions to proceed with this command.",ephemeral=False)
+                await self.send(interaction=interaction,msg=f"❌ У меня нет прав администратора. Выдайте моей роли права администратора, чтобы продолжить.",ephemeral=False)
                 return
             embed = discord.Embed(
-                title=f"Thanks for choosing {self.bot.user.name}!",
-                description="To setup this bot in server you need to use 1 commands:",
+                title=f"Спасибо, что выбрали {self.bot.user.name}!",
+                description="Чтобы настроить бота на сервере, используйте команду:",
                 color=discord.Color.blurple()
                 )
 
             embed.add_field(
-                name="`/register` <voice channel>",
-                value=" Note voice channel must have a category with everyone's default permissions else bot won't function properly.",
+                name="`/register` <голосовой канал>",
+                value=" Примечание: у голосового канала должна быть категория с обычными правами для @everyone, иначе бот не будет работать правильно.",
                 inline=False
             )
 
-            embed.set_footer(text="In case of any error while using /register please run /unregister once.")
+            embed.set_footer(text="Если при использовании /register возникла ошибка, один раз выполните /unregister.")
 
             await self.send_embed(interaction=interaction,embed=embed,ephemeral=False)
             return
@@ -1279,7 +1279,7 @@ class VoiceControls(commands.Cog):
             exception_traceback = traceback.format_exc()
             error_name = type(e).__name__
             log_error(message=f"Location : bot_setup - filename : voice_controls.py - Error Name - {error_name}",exc_info=exception_traceback)
-            await self.send(interaction=interaction,msg=f"❌ Internal Server Error Please retry or contact developers.")
+            await self.send(interaction=interaction,msg=f"❌ Внутренняя ошибка. Повторите попытку или свяжитесь с разработчиками.")
             return
 # Setup function to load the cog
 async def setup(bot:commands.Bot):
