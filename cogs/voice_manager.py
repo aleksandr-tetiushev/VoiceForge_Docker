@@ -58,7 +58,7 @@ class VoiceManager(commands.Cog):
                     continue
                 
                 if len(guild_channel.members) == 0:
-                    await guild_channel.delete(reason="Temp Channel Empty")
+                    await guild_channel.delete(reason="Временный канал пуст")
                     channel_db.channel_delete(server_id=server_id,channel_id=guild_channel.id)
     
             except discord.NotFound:
@@ -141,12 +141,12 @@ class VoiceManager(commands.Cog):
 
             if not write_status:
                 log_error(message="Location : create_temp_voice_channel - DB write failed")
-                await new_channel.delete(reason="Internal Server error")
+                await new_channel.delete(reason="Внутренняя ошибка сервера")
                 return False
 
             try:
                 await new_channel.send(
-                    content=f"Welcome {member.mention} ❤️\n\n",
+                    content=f"Добро пожаловать, {member.mention} ❤️\n\n",
                     embed=build_panel_embed(),
                     view=VoicePanelView()
                 )
@@ -158,7 +158,7 @@ class VoiceManager(commands.Cog):
             
             except discord.HTTPException:
                 log_error(message="Location : create_temp_voice_channel - move_to failed")
-                await new_channel.delete(reason="Move failed")
+                await new_channel.delete(reason="Не удалось переместить участника")
                 channel_db.channel_delete(server_id=new_channel.guild.id,channel_id=new_channel.id)
                 return False
 
@@ -278,7 +278,7 @@ class VoiceManager(commands.Cog):
 
                 # delete Discord channel safely
                 try:
-                    await before.channel.delete(reason="Temp Channel Empty")
+                    await before.channel.delete(reason="Временный канал пуст")
                 except discord.NotFound:
                     pass
 
