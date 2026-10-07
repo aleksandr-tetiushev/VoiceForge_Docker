@@ -11,17 +11,17 @@ class ErrorHandler(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self,ctx:commands.Context,error):
         if isinstance(error,commands.NotOwner):
-            await ctx.reply("❌ This command is only available to the bot owner.")
+            await ctx.reply("❌ Эта команда доступна только владельцу бота.")
         
         elif isinstance(error,commands.MissingPermissions):
-            await ctx.reply("❌ You don’t have permission to use this command.")
+            await ctx.reply("❌ У вас нет прав для использования этой команды.")
         
         elif isinstance(error, commands.CommandNotFound):
             return  # silently ignore command not found
         
         else:
             # Log unexpected errors
-            await ctx.reply("Some Error Occurred!")
+            await ctx.reply("Произошла ошибка!")
             log_error(message="Unexpected Error - Location : on_command_error",exc_info=error)
     
    
